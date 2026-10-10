@@ -33,6 +33,7 @@ target_sources(
   # Autolinking Setup
   ../nitrogen/generated/android/RnLive2dOnLoad.cpp
   # Shared Nitrogen C++ sources
+  ../nitrogen/generated/shared/c++/HybridLive2DModelSpec.cpp
   ../nitrogen/generated/shared/c++/HybridRnLive2dSpec.cpp
   # Android-specific Nitrogen C++ sources
   

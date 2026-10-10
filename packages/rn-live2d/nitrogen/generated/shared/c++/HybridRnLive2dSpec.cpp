@@ -14,7 +14,7 @@ namespace margelo::nitro::rnlive2d {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
-      prototype.registerHybridMethod("sum", &HybridRnLive2dSpec::sum);
+      prototype.registerHybridMethod("loadModel", &HybridRnLive2dSpec::loadModel);
     });
   }
 

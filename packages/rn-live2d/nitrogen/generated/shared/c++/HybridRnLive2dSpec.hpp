@@ -13,9 +13,12 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `HybridLive2DModelSpec` to properly resolve imports.
+namespace margelo::nitro::rnlive2d { class HybridLive2DModelSpec; }
 
-
-
+#include <memory>
+#include "HybridLive2DModelSpec.hpp"
+#include <NitroModules/ArrayBuffer.hpp>
 
 namespace margelo::nitro::rnlive2d {
 
@@ -48,7 +51,7 @@ namespace margelo::nitro::rnlive2d {
 
     public:
       // Methods
-      virtual double sum(double num1, double num2) = 0;
+      virtual std::shared_ptr<HybridLive2DModelSpec> loadModel(const std::shared_ptr<ArrayBuffer>& moc) = 0;
 
     protected:
       // Hybrid Setup

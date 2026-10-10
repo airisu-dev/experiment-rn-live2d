@@ -3,6 +3,8 @@
 ## Licensing
 Cubism Core is proprietary. It most likely **cannot be bundled** in the npm package. `pixi-live2d-display` handles this by making users supply the Core themselves. Plan for an **Expo config plugin or postinstall step** that points to a Core the user downloads. Read the Live2D license terms carefully before publishing.
 
+The Core, the Framework and the sample models all come from the one SDK download in the gitignored `packages/rn-live2d/vendor/CubismSdkForNative/`, so their versions always match and nothing from Live2D is committed. The Framework is also on GitHub (`Live2D/CubismNativeFramework`), but the Core is not, so the SDK download is needed anyway. If we ever need to patch the Framework, a forked submodule is the way to track it.
+
 ## Assets
 `model3.json` references `.moc3`, textures, motions and physics files by relative path.
 - Add `moc3` and `motion3.json` (and other Cubism file types) to Metro's `assetExts`.

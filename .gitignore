@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Live2D sample models (Live2D Free Material License; not redistributed)
+/assets/live2d/

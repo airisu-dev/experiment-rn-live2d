@@ -56,9 +56,12 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
+    "expo-asset": "*",
+    "expo-file-system": "*",
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": "*"
+    "react-native-nitro-modules": "*",
+    "react-native-skia": "*"
   },
   "eslintConfig": {
     "root": true,
