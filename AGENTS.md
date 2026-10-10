@@ -21,6 +21,19 @@ npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```
 
+### Local Android development
+
+This project uses native modules (Skia, Nitro), so Expo Go won't work — use a development build. Use `bunx` (bun.lock present).
+
+```bash
+bunx expo prebuild --platform android  # regenerate android/ from app.json + config plugins
+bunx expo run:android                  # build, install the dev client, and start Metro
+```
+
+- Re-run `prebuild` after changing `app.json`, config plugins, or native dependencies.
+- If the build fails with stale paths (e.g. after moving the project), delete `android/build/generated/autolinking` and `android/.gradle`, run `android/gradlew.bat --stop` (a running daemon locks `android/`), then prebuild again.
+- `bunfig.toml` sets `linker = "hoisted"` on purpose: Bun's default isolated `node_modules/.bun/...` layout makes CMake paths exceed the Windows 250-char limit and breaks the native build. Don't remove it.
+
 Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
