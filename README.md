@@ -4,11 +4,15 @@ Live2D Cubism models rendered natively in React Native with react-native-skia (A
 
 ## Setup
 
-1. Download **Cubism SDK for Native** 5-r.5 from Live2D (accept their license) and extract it to `packages/rn-live2d/vendor/CubismSdkForNative/`. It provides the proprietary Core (and later the Framework); the folder is gitignored and never committed.
+1. Fetch **Cubism SDK for Native** 5-r.5 from Live2D. This means accepting Live2D's license, which ships in the SDK as `LICENSE.md`.
 
-2. Copy a sample model for the example app, e.g. `vendor/CubismSdkForNative/Samples/Resources/Hiyori` → `assets/live2d/Hiyori` (also gitignored).
+   ```bash
+   bun run fetch:cubism
+   ```
 
-3. Install and run on Android (development build; Expo Go won't work):
+   It downloads the official zip, checks its SHA-256, and extracts it to `packages/rn-live2d/vendor/CubismSdkForNative/`. That gives the proprietary Core, and later the Framework. It also copies the Hiyori sample to `assets/live2d/Hiyori`. Both folders are gitignored and never committed. CI runs the same script.
+
+2. Install and run on Android (development build; Expo Go won't work):
 
    ```bash
    bun install

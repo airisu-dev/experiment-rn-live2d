@@ -6,6 +6,7 @@ Goal: the model moves. Idle motion loops, with physics, eye blink and breath, at
 
 - Compile `vendor/CubismSdkForNative/Framework/src` (from the same SDK download as the Core, so their versions always match) into `RnLive2d`, **without** any `Rendering/<backend>` folder. The Framework still includes the abstract `Rendering/CubismRenderer.hpp`, so check whether a small stub renderer is needed, or skip `CubismUserModel` and drive the modules directly.
 - Modules to use: `CubismMotionManager` + `CubismMotion`, `CubismPhysics`, `CubismPose` (replaces milestone 2's JS pose), `CubismEyeBlink`, `CubismBreath`.
+- Add the Framework sources to both `android/CMakeLists.txt` and the podspec. CI already gets them from the SDK download (see [milestone 1, step 7](./milestone-01.md#7-ios)).
 - Add `CubismFramework::StartUp` / `Initialize` once per process, with an allocator.
 - New model methods: `update(dt)`, `motion(group, index?)`, and loading of motion / physics / pose JSON (read as strings in JS, passed to C++).
 

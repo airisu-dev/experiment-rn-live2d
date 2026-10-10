@@ -17,4 +17,4 @@ Goal: steady 60 fps (120 where supported) with one model on a mid-range arm64 ph
 ## Also
 
 - Offscreen rendering for Cubism 5.3 models (`csmGetOffscreen*`), if newer models need it.
-- Revisit iOS once Android is solid: the podspec, Core `.a` and Framework wiring are left out until then.
+- Profile iOS on a real device too, not only the simulator.

@@ -1,12 +1,14 @@
-# Milestone 1 — Static model on Android
+# Milestone 1 — Static model on Android & iOS
 
-**Status: done** (2026-10-11). Hiyori renders on an Android emulator (x86_64).
+**Status:**
+- Android: **done** (2026-10-11). Hiyori renders on an Android emulator (x86_64).
+- iOS: **in progress**: podspec and CI wiring done, waiting on the first CI build. See [step 7](#7-ios).
 
 **Known issues** (fixed in [milestone 2](./milestone-02.md)):
 - Pose isn't applied, so Hiyori shows both arm sets.
 - Masks aren't applied, so masked parts draw unclipped.
 
-Goal: load a Live2D model and draw it as a still image inside a Skia `<Canvas>`, **Android only**. No masks, motions, physics or interaction yet (see [roadmap.md](../roadmap.md)).
+Goal: load a Live2D model and draw it as a still image inside a Skia `<Canvas>`, on **Android and iOS**. No masks, motions, physics or interaction yet (see [roadmap.md](../roadmap.md)).
 
 ## Where things stand
 
@@ -37,7 +39,7 @@ The Framework (motions, physics, its JSON parsing) can wait until roadmap milest
   - Add the Core include directory.
   - Link the Core into `RnLive2d`.
   - Stop with a clear error if the Core is missing.
-- Leave iOS (podspec, `nitro.json` iOS block) alone.
+- iOS is wired separately in [step 7](#7-ios).
 
 ### 2. Nitro spec (`src/specs/*.nitro.ts`) and codegen
 
@@ -107,8 +109,55 @@ useLive2DModel({
 - Run `bunx expo prebuild --platform android`, then `bunx expo run:android`.
 - Run lint and `tsc` at the end.
 
+### 7. iOS
+
+The C++, Nitro spec and JS are shared, so iOS only needs the native build wiring. Skia draws with Metal there.
+
+#### How iOS gets built
+
+There's no Mac locally, so iOS builds run on GitHub Actions through `rnd` (`@react-native-feel/deploy`):
+
+```bash
+bunx rnd build --platform ios --profile development
+```
+
+- It dispatches `.github/workflows/eas-build.yml`, which checks out the **pushed** code. Commit and push first; local changes aren't built.
+- The `development` profile in `eas.json` builds a dev client **for the simulator** (`ios.simulator: true`). So the build links the `iphonesimulator` Core slices.
+- The workflow runs `expo prebuild` and `pod install` itself, so the podspec and config plugins must be enough on their own.
+
+#### CI needs the SDK, but the repo doesn't have it
+
+The Core and the Hiyori sample are gitignored, so a CI checkout has neither. **Done:** `scripts/fetch-cubism-sdk.sh` (also `bun run fetch:cubism`):
+- downloads `https://cubism.live2d.com/sdk-native/bin/CubismSdkForNative-5-r.5.zip` (Live2D's official URL),
+- checks its pinned SHA-256,
+- extracts it to `packages/rn-live2d/vendor/CubismSdkForNative/`,
+- copies `Samples/Resources/Hiyori` to `assets/live2d/Hiyori`.
+
+`eas-build.yml` runs it right after checkout, before install and prebuild, and caches the zip with `actions/cache`. This keeps the proprietary files out of the repo. The workflow file says the CLI never rewrites it, so the step is safe there. The same download also brings the Framework for milestone 3. To upgrade the SDK, change `VERSION` and `SHA256` in the script. Check that the Live2D license allows this kind of automated download in CI.
+
+#### Podspec (`packages/rn-live2d/RnLive2d.podspec`)
+
+The SDK ships iOS Core as separate static libraries per slice, not an xcframework: `Core/lib/ios/{Debug,Release}-iphoneos`, `…-iphonesimulator-arm64` and `…-iphonesimulator-x86_64`.
+
+**Done:**
+- On macOS, `fetch-cubism-sdk.sh` merges the two simulator slices with `lipo`. It then packages them with the device slice into `Core/Live2DCubismCore.xcframework` (`xcodebuild -create-xcframework`, Release libraries).
+- The podspec:
+  - vendors the xcframework (`vendored_frameworks`), so CocoaPods links the right slice for device or simulator, with static or dynamic pods;
+  - adds `Core/include` to `HEADER_SEARCH_PATHS`. This is set before `add_nitrogen_files`, and RN's `install_modules_dependencies` appends to it rather than replacing it;
+  - fails `pod install` with a clear message if the xcframework is missing;
+  - drops `visionos` (no Core for it) and points `s.source` at the real repo.
+
+This replaces the first idea of per-SDK `LIBRARY_SEARCH_PATHS`, which depended on the pod linking mode and `$(CURRENT_ARCH)` resolving at link time.
+
+#### Checks
+
+- Push, run the `rnd` command above, and watch the Actions run.
+- Install the simulator build, start Metro, and confirm Hiyori looks the same as on Android: both arm sets and unclipped masks are expected until milestone 2.
+- Unlike Android, iOS has no armeabi-v7a-style gap: the SDK ships device arm64 and both simulator architectures.
+
 ## Risks
 
+- The iOS link setup can only be tested on CI, so each fix costs a push and a macOS run. Get the podspec right in as few rounds as possible.
 - Prebuilt Core library names and ABIs vary between SDK versions. Match whatever SDK version is downloaded.
 - Images decoded by Skia are already premultiplied, so dark edges shouldn't show up yet. That needs another check once masks and multiply/screen colors are added.
 

@@ -84,6 +84,18 @@ jobs:
           fi
           echo "Building profile '${{ inputs.profile }}' from eas.json"
 
+      # Cubism Core and the sample models are proprietary and gitignored, so the
+      # checkout doesn't have them. Fetch them from Live2D before prebuild.
+      - name: Restore Cubism SDK cache
+        uses: actions/cache@v4
+        with:
+          path: packages/rn-live2d/vendor/CubismSdkForNative-*.zip
+          key: cubism-sdk-${{ hashFiles('scripts/fetch-cubism-sdk.sh') }}
+
+      - name: Fetch Cubism SDK
+        shell: bash
+        run: bash scripts/fetch-cubism-sdk.sh
+
       - name: Export build environment
         shell: bash
         run: |
