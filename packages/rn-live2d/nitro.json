@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "rnlive2d"
+  ],
+  "ios": {
+    "iosModuleName": "RnLive2d"
+  },
+  "android": {
+    "androidNamespace": [
+      "rnlive2d"
+    ],
+    "androidCxxLibName": "RnLive2d"
+  },
+  "autolinking": {
+    "RnLive2d": {
+      "all": {
+        "language": "c++",
+        "implementationClassName": "HybridRnLive2d"
+      }
+    }
+  },
+  "ignorePaths": [
+    "**/node_modules"
+  ]
+}

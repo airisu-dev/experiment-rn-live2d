@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "rn-live2d",
+    "slug": "rn-live2d",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "app",
+    "scheme": "rnlive2d",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "dev.airisu.rnlive2d"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "dev.airisu.rnlive2d"
     },
     "web": {
       "output": "static",
@@ -31,6 +32,18 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      "expo-dev-client",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          },
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
         }
       ]
     ],
