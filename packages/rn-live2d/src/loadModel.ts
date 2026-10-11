@@ -78,6 +78,8 @@ export interface Live2DModel {
   /** Loaded expression names. */
   expressionNames: string[]
 
+  /** Unique per loaded model: <Live2D>s showing the same model share its frames. */
+  id: number
   /** Native model. Thread-safe. */
   native: NativeModel
   /** The model drawn at load, at its native canvas size, origin top-left. */
@@ -118,6 +120,8 @@ async function loadTexture(source: AssetSource): Promise<SkImage> {
 }
 
 /** Loads a model from its files, or from a `require.context` of its folder. */
+let nextModelId = 1
+
 export async function loadLive2DModel(
   input: Live2DModelSource | Live2DModelContext
 ): Promise<Live2DModel> {
@@ -169,6 +173,7 @@ export async function loadLive2DModel(
     ] as const
 
   return {
+    id: nextModelId++,
     motion: (group, index, priority) =>
       native.startMotion(group, index, priority),
     expression: (name) => native.setExpression(name),
