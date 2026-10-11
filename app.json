@@ -10,7 +10,8 @@
     "ios": {
       "bundleIdentifier": "dev.airisu.rnlive2d",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CADisableMinimumFrameDurationOnPhone": true
       }
     },
     "android": {

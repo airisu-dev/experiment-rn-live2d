@@ -159,6 +159,9 @@ export function Live2D({
           const shown: SkPicture[] = []
           let last: number | null = null
           let frame = 0
+          // When the next frame is due. Waiting until an absolute time, not for a fixed
+          // delay, keeps late timer wake-ups (about 4 ms on iOS) from adding up.
+          let nextFrameAt = 0
           const frameMs = () =>
             Math.min(
               MAX_FRAME_MS,
@@ -222,7 +225,11 @@ export function Live2D({
                   drawStats.layers = 0
                 }
               }
-              setTimeout(tick, Math.max(0, frameMs() - (end - frameStart)))
+              const interval = frameMs()
+              nextFrameAt += interval
+              // More than a frame behind (a stall, or the first frame): start over from now.
+              if (nextFrameAt < end - interval) nextFrameAt = end + interval
+              setTimeout(tick, Math.max(0, nextFrameAt - end))
             } catch (e) {
               fail(e)
             }
