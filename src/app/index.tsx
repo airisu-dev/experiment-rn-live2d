@@ -77,14 +77,30 @@ function fit(
   };
 }
 
+function offset(
+  place: { x: number; y: number; scale: number },
+  by: { x: number; y: number }
+) {
+  return { ...place, x: place.x + by.x, y: place.y + by.y };
+}
+
 function ModelView({ source }: { source: Live2DModelContext }) {
   const model = useLive2DModel(source);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [stats, setStats] = useState<Live2DFrameStats | null>(null);
   const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);
-  const { x, y, scale } = fit(model, { x: 0, y: 0, ...size });
+  // Where the model has been dragged to, relative to its fitted place.
+  const [moved, setMoved] = useState({ x: 0, y: 0 });
+  const fitted = fit(model, { x: 0, y: 0, ...size });
+  const { x, y, scale } = offset(fitted, moved);
   // Follow the finger; tap the body (or Mao's head) to play a motion (or expression).
-  const gesture = useLive2DGesture(model, { x, y, scale });
+  // Long-press the model to drag it around.
+  const gesture = useLive2DGesture(model, {
+    x,
+    y,
+    scale,
+    onMove: (nx, ny) => setMoved({ x: nx - fitted.x, y: ny - fitted.y }),
+  });
 
   return (
     <View style={styles.modelView} onLayout={onLayout}>
@@ -115,12 +131,25 @@ function AllModelsView() {
   const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);
 
   const half = size.width / 2;
-  const left = fit(hiyori, { x: 0, y: 0, width: half, height: size.height });
-  const right = fit(mao, { x: half, y: 0, width: half, height: size.height });
+  const hiyoriFitted = fit(hiyori, { x: 0, y: 0, width: half, height: size.height });
+  const maoFitted = fit(mao, { x: half, y: 0, width: half, height: size.height });
+  // Where each model has been dragged to, relative to its fitted place.
+  const [hiyoriMoved, setHiyoriMoved] = useState({ x: 0, y: 0 });
+  const [maoMoved, setMaoMoved] = useState({ x: 0, y: 0 });
+  const left = offset(hiyoriFitted, hiyoriMoved);
+  const right = offset(maoFitted, maoMoved);
   // One gesture for every model: a tap goes to the topmost model it hits.
   const gesture = useLive2DGestures([
-    { model: hiyori, ...left },
-    { model: mao, ...right },
+    {
+      model: hiyori,
+      ...left,
+      onMove: (x, y) => setHiyoriMoved({ x: x - hiyoriFitted.x, y: y - hiyoriFitted.y }),
+    },
+    {
+      model: mao,
+      ...right,
+      onMove: (x, y) => setMaoMoved({ x: x - maoFitted.x, y: y - maoFitted.y }),
+    },
   ]);
 
   return (
