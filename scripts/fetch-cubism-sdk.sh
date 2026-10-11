@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Downloads Cubism SDK for Native from Live2D into the gitignored vendor folder,
-# and copies the sample model the example app uses into assets/live2d/.
+# and copies the sample models the example app uses into assets/live2d/.
 #
 # The SDK's Core is proprietary and is never committed (see docs/gotchas.md#licensing).
 # Running this means accepting Live2D's license terms, included in the SDK as LICENSE.md.
@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VENDOR_DIR="$ROOT/packages/rn-live2d/vendor"
 SDK_DIR="$VENDOR_DIR/CubismSdkForNative"
 ZIP="$VENDOR_DIR/CubismSdkForNative-${VERSION}.zip"
-SAMPLES=(Hiyori)
+SAMPLES=(Hiyori Mao)
 
 sha256() {
   if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi
