@@ -4,16 +4,20 @@ import {
   type Live2DModel,
   type Live2DModelSource,
 } from './loadModel'
+import type { Live2DModelContext } from './modelContext'
 
 /**
  * Loads a model once on mount. Returns `null` until it's ready.
  * Throws the load error during render so an error boundary can catch it.
  */
-export function useLive2DModel(source: Live2DModelSource): Live2DModel | null {
+export function useLive2DModel(
+  source: Live2DModelSource | Live2DModelContext
+): Live2DModel | null {
   const [model, setModel] = useState<Live2DModel | null>(null)
   const [error, setError] = useState<unknown>(null)
-  // The source is a set of require() ids, which never change for a mounted component.
-  const [initialSource] = useState(source)
+  // The source is require() ids or a require.context, which never change for a mounted component.
+  // Wrapped: a require.context is a function, which useState would call as an initializer.
+  const [initialSource] = useState(() => source)
 
   useEffect(() => {
     let cancelled = false

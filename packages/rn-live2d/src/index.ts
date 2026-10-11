@@ -6,6 +6,7 @@ export type {
   Live2DModelSource,
   CubismJson,
 } from './loadModel'
+export type { Live2DModelContext } from './modelContext'
 export { useLive2DModel } from './useLive2DModel'
 export { Live2D } from './Live2D'
 export type { Live2DProps } from './Live2D'

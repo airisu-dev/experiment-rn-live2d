@@ -11,6 +11,11 @@ import {
 } from 'react-native-skia'
 import { toCubismJson } from './cubismJson'
 import { createDrawer, type CanvasInfo } from './drawer'
+import {
+  isModelContext,
+  sourceFromContext,
+  type Live2DModelContext,
+} from './modelContext'
 import { RnLive2d } from './native'
 import type {
   MotionPriority,
@@ -99,9 +104,11 @@ async function loadTexture(source: AssetSource): Promise<SkImage> {
   return image
 }
 
+/** Loads a model from its files, or from a `require.context` of its folder. */
 export async function loadLive2DModel(
-  source: Live2DModelSource
+  input: Live2DModelSource | Live2DModelContext
 ): Promise<Live2DModel> {
+  const source = isModelContext(input) ? sourceFromContext(input) : input
   const [moc, textures] = await Promise.all([
     readAsset(source.moc),
     Promise.all(source.textures.map(loadTexture)),

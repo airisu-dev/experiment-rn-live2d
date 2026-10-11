@@ -30,9 +30,15 @@ Checked on the Android emulator:
 - Hiyori follows the finger, and tapping her body hits `Body`.
 - Mao's head hits `Head` and switches expressions, and her body hits `Body`.
 
-## Model loading — open
+## Model loading ✅
 
-`model3.json` lists every other file, so add `useLive2DModel(require('…/model3.json'))` that resolves them automatically. Metro can't resolve the paths at runtime, so this needs either a small Babel/Metro transform or a generated asset map. Pick one here.
+`useLive2DModel(require.context('./Mao', true, /\.(json|moc3|png)$/))`: `modelContext.ts` finds the folder's one `.model3.json` among the context's keys and requires every file it lists by key (motions, expressions, textures, ...). Expo's Metro config enables `require.context` (Expo Router relies on it).
+
+- No codegen step: a new model or an edited `model3.json` just works. A generated asset map was tried first and dropped for this reason.
+- The folder path must be a string literal for Metro, so it's written in app code.
+- Everything matching the filter is bundled, including files the model doesn't list (`cdi3.json`, `userdata3.json`).
+- A file that's listed but filtered out throws, naming the filter.
+- The explicit `Live2DModelSource` form still works.
 
 ## Checks
 

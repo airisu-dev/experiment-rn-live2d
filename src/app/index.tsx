@@ -13,7 +13,7 @@ import {
   Live2D,
   useLive2DGesture,
   useLive2DModel,
-  type Live2DModelSource,
+  type Live2DModelContext,
 } from 'rn-live2d';
 import { MODEL_NAMES, MODELS, type ModelName } from '@/live2dModels';
 
@@ -43,7 +43,7 @@ export default function Home() {
   );
 }
 
-function ModelView({ source }: { source: Live2DModelSource }) {
+function ModelView({ source }: { source: Live2DModelContext }) {
   const model = useLive2DModel(source);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);

@@ -1,7 +1,9 @@
 # Public API (pixi-live2d style)
 
 ```tsx
-const model = useLive2DModel(source); // see Live2DModelSource
+// A require.context of the model's folder: the files its model3.json lists are
+// loaded from it. Or pass the files yourself as a Live2DModelSource.
+const model = useLive2DModel(require.context('./Mao', true, /\.(json|moc3|png)$/));
 const gesture = useLive2DGesture(model, { x, y, scale });
 
 <GestureDetector gesture={gesture}>
