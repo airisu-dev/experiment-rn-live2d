@@ -42,4 +42,4 @@ Checked on the Android emulator:
 
 ## Checks
 
-The model follows a finger, tapping the head and body plays motions, and expressions switch. Android ✅, iOS pending.
+The model follows a finger, tapping the head and body plays motions, and expressions switch. Android ✅, iOS ✅ (preview build, 2026-10-11).

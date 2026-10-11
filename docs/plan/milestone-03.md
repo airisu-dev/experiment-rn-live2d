@@ -1,9 +1,9 @@
 # Milestone 3 — Motions & physics
 
 **Status: in progress.**
-- Step 1, Framework builds and starts: Android **done** (2026-10-11); iOS podspec updated, waiting on a CI build. See [Step 1 notes](#step-1-notes).
-- Step 2, `update(dt)` with motions, physics, blink, breath, pose: Android **done** (2026-10-11), iOS waiting on a CI build. See [Step 2 notes](#step-2-notes).
-- Step 3, per-frame redraw: Android **works** (2026-10-11) on a background worklet thread: Hiyori 56–58 fps, Mao 44–46 fps on the emulator. iOS and real-device numbers still to check. See [Step 3 notes](#step-3-notes) and [Background thread](#background-thread-react-native-worklets).
+- Step 1, Framework builds and starts: Android **done** (2026-10-11); iOS **done** (2026-10-11, preview build). See [Step 1 notes](#step-1-notes).
+- Step 2, `update(dt)` with motions, physics, blink, breath, pose: Android **done** (2026-10-11), iOS **done** (2026-10-11). See [Step 2 notes](#step-2-notes).
+- Step 3, per-frame redraw: Android **works** (2026-10-11) on a background worklet thread: Hiyori 56–58 fps, Mao 44–46 fps on the emulator. iOS preview build runs smoothly (2026-10-11). Real-device numbers still to measure. See [Step 3 notes](#step-3-notes) and [Background thread](#background-thread-react-native-worklets).
 
 Goal: the model moves. Idle motion loops, with physics, eye blink and breath, at 60 fps on a mid-range phone.
 
