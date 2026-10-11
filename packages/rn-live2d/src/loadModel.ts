@@ -88,8 +88,16 @@ export interface Live2DModel {
 }
 
 async function readAsset(source: AssetSource): Promise<ArrayBuffer> {
-  const [asset] = await Asset.loadAsync(source)
-  if (!asset?.localUri) {
+  const asset = Asset.fromModule(source)
+  // Android release builds embed images as drawables, and expo-asset marks them
+  // downloaded with a bare resource name (enough for <Image>), which isn't a file.
+  // Download for real: that copies the resource into the cache.
+  if (asset.localUri && !asset.localUri.includes(':')) {
+    asset.downloaded = false
+    asset.localUri = null
+  }
+  await asset.downloadAsync()
+  if (!asset.localUri) {
     throw new Error(`Live2D: failed to download asset ${String(source)}`)
   }
   return new File(asset.localUri).arrayBuffer()

@@ -25,3 +25,7 @@ The Cubism Native Framework parses its JSON files (model3, physics3, pose3, moti
 - Exponents (`1e-7`) aren't supported.
 
 `JSON.stringify(x)` breaks both rules. Send files through `toCubismJson` (`packages/rn-live2d/src/cubismJson.ts`): tab-indented, one value per line, exponents written out in full. Its loaders also don't check for parse errors and crash on bad JSON, so `Live2DUserModel` test-parses every input first and throws instead.
+
+## Android release assets
+
+In Android release builds, assets are embedded in the APK. For images, `expo-asset` skips the download and sets `localUri` to a bare drawable name (enough for `<Image>`), which `expo-file-system` rejects ("URI is not absolute"). `readAsset` in `loadModel.ts` clears that and calls `downloadAsync()`, which copies the resource into the cache. Debug builds never hit this: Metro serves assets over HTTP. Always check a release build before calling a loading change done.
