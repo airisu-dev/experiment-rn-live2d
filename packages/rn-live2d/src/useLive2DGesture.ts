@@ -15,6 +15,12 @@ export interface Live2DGestureTarget {
    * `TapBody`), or for `Head` without one, a random expression.
    */
   onHit?: (hitAreas: string[]) => boolean | void
+  /**
+   * Makes the model draggable: long-press one of its hit areas, then move the
+   * finger. Called with the model's new top-left position (its `x`, `y`) as
+   * the finger moves; the app moves it.
+   */
+  onMove?: (x: number, y: number) => void
 }
 
 export interface Live2DGesturesOptions {
@@ -40,16 +46,31 @@ function react(model: Live2DModel, hitAreas: string[]) {
   }
 }
 
+// How long a press must last to pick up a draggable model.
+const LONG_PRESS_MS = 350
+
 // Canvas point to the target's model pixels.
 function toModel({ x = 0, y = 0, scale = 1 }: Live2DGestureTarget, px: number, py: number) {
   return [(px - x) / scale, (py - y) / scale] as const
 }
 
+// The topmost target with a hit area under a canvas point, and its hit areas.
+function topmostHit(targets: Live2DGestureTarget[], px: number, py: number) {
+  // Later targets are drawn over earlier ones.
+  for (let i = targets.length - 1; i >= 0; i--) {
+    const t = targets[i]!
+    if (!t.model) continue
+    const hitAreas = t.model.hitTest(...toModel(t, px, py))
+    if (hitAreas.length > 0) return { target: t, hitAreas }
+  }
+  return null
+}
+
 /**
  * Touch interaction for several `<Live2D>` models in one canvas: put it on a
  * `<GestureDetector>` wrapping the `<Canvas>`. List targets in drawing order.
- * Every model looks at the finger, and a tap goes to the topmost model with a
- * hit area under it.
+ * Every model looks at the finger, a tap goes to the topmost model with a hit
+ * area under it, and a long press picks up that model if it has `onMove`.
  */
 export function useLive2DGestures(
   targets: Live2DGestureTarget[],
@@ -74,21 +95,44 @@ export function useLive2DGestures(
         for (const t of latest.current) t.model?.resetFocus()
       })
 
+    // Shorter than a long press, so picking a model up isn't also a tap.
     const tap = Gesture.Tap()
       .runOnJS(true)
+      .maxDuration(LONG_PRESS_MS - 50)
       .onEnd((e, success) => {
         if (!success) return
-        // Topmost first: later targets are drawn over earlier ones.
-        for (const t of [...latest.current].reverse()) {
-          if (!t.model) continue
-          const hitAreas = t.model.hitTest(...toModel(t, e.x, e.y))
-          if (hitAreas.length === 0) continue
-          if (t.onHit?.(hitAreas) !== true) react(t.model, hitAreas)
-          return
+        const hit = topmostHit(latest.current, e.x, e.y)
+        if (hit && hit.target.onHit?.(hit.hitAreas) !== true) {
+          react(hit.target.model!, hit.hitAreas)
         }
       })
 
-    return Gesture.Simultaneous(pan, tap)
+    // The model being dragged (found again by model, as targets can change),
+    // and where the finger holds it relative to its top-left corner. Kept on an
+    // object: the React Compiler doesn't carry a reassigned `let` across these callbacks.
+    const drag: {
+      current: { model: Live2DModel; dx: number; dy: number } | null
+    } = { current: null }
+    const dragPan = Gesture.Pan()
+      .runOnJS(true)
+      .activateAfterLongPress(LONG_PRESS_MS)
+      // Starts once the press has been held; the finger is still about where it went down.
+      .onStart((e) => {
+        const hit = topmostHit(latest.current, e.x, e.y)
+        if (!hit?.target.onMove) return
+        const { model, x = 0, y = 0 } = hit.target
+        drag.current = { model: model!, dx: e.x - x, dy: e.y - y }
+      })
+      .onUpdate((e) => {
+        if (!drag.current) return
+        const { model, dx, dy } = drag.current
+        latest.current.find((t) => t.model === model)?.onMove?.(e.x - dx, e.y - dy)
+      })
+      .onFinalize(() => {
+        drag.current = null
+      })
+
+    return Gesture.Simultaneous(pan, tap, dragPan)
   }, [focus])
 }
 
