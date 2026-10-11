@@ -28,12 +28,20 @@ Pod::Spec.new do |s|
     "ios/**/*.{m,mm}",
     # Implementation (C++ objects)
     "cpp/**/*.{hpp,cpp}",
+    # Cubism Native Framework (motions, physics, pose, ...) from the same SDK download
+    "vendor/CubismSdkForNative/Framework/src/**/*.{hpp,cpp}",
   ]
+  # Its Rendering/<backend> folders are left out: we draw with Skia
+  # (see cpp/CubismRendererStub.cpp).
+  s.exclude_files = "vendor/CubismSdkForNative/Framework/src/Rendering/*/**/*"
 
   s.vendored_frameworks = "vendor/CubismSdkForNative/Core/Live2DCubismCore.xcframework"
   # Set before add_nitrogen_files, which merges its own settings into this.
   s.pod_target_xcconfig = {
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/vendor/CubismSdkForNative/Core/include\"",
+    "HEADER_SEARCH_PATHS" => [
+      "\"$(PODS_TARGET_SRCROOT)/vendor/CubismSdkForNative/Core/include\"",
+      "\"$(PODS_TARGET_SRCROOT)/vendor/CubismSdkForNative/Framework/src\"",
+    ].join(" "),
   }
 
   load 'nitrogen/generated/ios/RnLive2d+autolinking.rb'

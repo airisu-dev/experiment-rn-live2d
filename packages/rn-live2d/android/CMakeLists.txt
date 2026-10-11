@@ -21,11 +21,25 @@ endif()
 add_library(Live2DCubismCore STATIC IMPORTED)
 set_target_properties(Live2DCubismCore PROPERTIES IMPORTED_LOCATION "${CUBISM_CORE_LIB}")
 
+# Cubism Native Framework (motions, physics, pose, ...) from the same SDK download.
+# Its Rendering/<backend> folders are left out: we draw with Skia
+# (see ../cpp/CubismRendererStub.cpp).
+set (CUBISM_FRAMEWORK_DIR "${CUBISM_CORE_DIR}/../Framework/src")
+file(GLOB_RECURSE CUBISM_FRAMEWORK_SOURCES "${CUBISM_FRAMEWORK_DIR}/*.cpp")
+list(FILTER CUBISM_FRAMEWORK_SOURCES EXCLUDE REGEX "/Rendering/[^/]+/")
+add_library(CubismFramework STATIC ${CUBISM_FRAMEWORK_SOURCES})
+target_include_directories(CubismFramework PUBLIC "${CUBISM_FRAMEWORK_DIR}" "${CUBISM_CORE_DIR}/include")
+# Third-party code: don't flood the build log with its warnings.
+target_compile_options(CubismFramework PRIVATE -w)
+
 # Define C++ library and add all sources
 add_library(${PACKAGE_NAME} SHARED
 	src/main/cpp/cpp-adapter.cpp
 	../cpp/HybridRnLive2d.cpp
 	../cpp/HybridLive2DModel.cpp
+	../cpp/CubismSetup.cpp
+	../cpp/CubismRendererStub.cpp
+	../cpp/Live2DUserModel.cpp
 )
 
 # Add Nitrogen specs :)
@@ -44,6 +58,7 @@ find_library(LOG_LIB log)
 target_link_libraries(
         ${PACKAGE_NAME}
         ${LOG_LIB}
+        CubismFramework
         Live2DCubismCore
         android                                   # <-- Android core
 )

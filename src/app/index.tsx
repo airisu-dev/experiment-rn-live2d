@@ -9,25 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Canvas } from 'react-native-skia';
 import { Live2D, useLive2DModel, type Live2DModelSource } from 'rn-live2d';
-
-const MODELS = {
-  Hiyori: {
-    moc: require('@/assets/live2d/Hiyori/Hiyori.moc3'),
-    textures: [
-      require('@/assets/live2d/Hiyori/Hiyori.2048/texture_00.png'),
-      require('@/assets/live2d/Hiyori/Hiyori.2048/texture_01.png'),
-    ],
-    pose: require('@/assets/live2d/Hiyori/Hiyori.pose3.json'),
-  },
-  Mao: {
-    moc: require('@/assets/live2d/Mao/Mao.moc3'),
-    textures: [require('@/assets/live2d/Mao/Mao.2048/texture_00.png')],
-    pose: require('@/assets/live2d/Mao/Mao.pose3.json'),
-  },
-} satisfies Record<string, Live2DModelSource>;
-
-type ModelName = keyof typeof MODELS;
-const MODEL_NAMES = Object.keys(MODELS) as ModelName[];
+import { MODEL_NAMES, MODELS, type ModelName } from '@/live2dModels';
 
 export default function Home() {
   const [name, setName] = useState<ModelName>('Hiyori');

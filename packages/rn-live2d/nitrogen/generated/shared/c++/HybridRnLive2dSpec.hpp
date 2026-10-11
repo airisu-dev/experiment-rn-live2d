@@ -19,6 +19,7 @@ namespace margelo::nitro::rnlive2d { class HybridLive2DModelSpec; }
 #include <memory>
 #include "HybridLive2DModelSpec.hpp"
 #include <NitroModules/ArrayBuffer.hpp>
+#include <string>
 
 namespace margelo::nitro::rnlive2d {
 
@@ -51,7 +52,7 @@ namespace margelo::nitro::rnlive2d {
 
     public:
       // Methods
-      virtual std::shared_ptr<HybridLive2DModelSpec> loadModel(const std::shared_ptr<ArrayBuffer>& moc) = 0;
+      virtual std::shared_ptr<HybridLive2DModelSpec> loadModel(const std::shared_ptr<ArrayBuffer>& moc, const std::string& settingsJson) = 0;
 
     protected:
       // Hybrid Setup

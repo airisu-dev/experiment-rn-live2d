@@ -18,3 +18,10 @@ Call `csmHasMocConsistency` on the `.moc3` before loading untrusted models.
 
 ## Coordinates
 Cubism uses a unit space centered on the origin. Map to canvas pixels with a canvas-size / pixels-per-unit transform.
+
+## Cubism JSON parser
+The Cubism Native Framework parses its JSON files (model3, physics3, pose3, motion3, ...) with its own `Utils::CubismJson`, which only handles the layout Cubism Editor writes:
+- A number must be followed by a newline or a comma (`CubismJson::ParseNumeric`). `{"A":1}`, `[1,2]` and `{"A": 1, "B": 2}` all fail.
+- Exponents (`1e-7`) aren't supported.
+
+`JSON.stringify(x)` breaks both rules. Send files through `toCubismJson` (`packages/rn-live2d/src/cubismJson.ts`): tab-indented, one value per line, exponents written out in full. Its loaders also don't check for parse errors and crash on bad JSON, so `Live2DUserModel` test-parses every input first and throws instead.

@@ -21,8 +21,10 @@ namespace margelo::nitro::rnlive2d {
       prototype.registerHybridGetter("pixelsPerUnit", &HybridLive2DModelSpec::getPixelsPerUnit);
       prototype.registerHybridGetter("drawableCount", &HybridLive2DModelSpec::getDrawableCount);
       prototype.registerHybridMethod("getDrawables", &HybridLive2DModelSpec::getDrawables);
-      prototype.registerHybridMethod("setPartOpacity", &HybridLive2DModelSpec::setPartOpacity);
-      prototype.registerHybridMethod("setParameterValue", &HybridLive2DModelSpec::setParameterValue);
+      prototype.registerHybridMethod("loadPhysics", &HybridLive2DModelSpec::loadPhysics);
+      prototype.registerHybridMethod("loadPose", &HybridLive2DModelSpec::loadPose);
+      prototype.registerHybridMethod("loadMotion", &HybridLive2DModelSpec::loadMotion);
+      prototype.registerHybridMethod("startMotion", &HybridLive2DModelSpec::startMotion);
       prototype.registerHybridMethod("update", &HybridLive2DModelSpec::update);
     });
   }

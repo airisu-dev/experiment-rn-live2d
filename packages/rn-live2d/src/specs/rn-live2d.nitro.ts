@@ -19,6 +19,9 @@ export interface DrawableData {
   indices: ArrayBuffer
 }
 
+/** Like the Cubism SDK samples: a higher priority interrupts a lower one. */
+export type MotionPriority = 'idle' | 'normal' | 'force'
+
 export interface Live2DModel
   extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   readonly canvasWidth: number
@@ -29,15 +32,29 @@ export interface Live2DModel
   readonly drawableCount: number
   /** All drawables sorted by render order (back to front), including hidden ones. */
   getDrawables(): DrawableData[]
-  /** Sets a part's opacity. Ignored if the id doesn't exist. Applied on `update()`. */
-  setPartOpacity(id: string, opacity: number): void
-  /** Sets a parameter's value. Ignored if the id doesn't exist. Applied on `update()`. */
-  setParameterValue(id: string, value: number): void
-  /** Recomputes drawables from the current parameters and part opacities. */
-  update(): void
+  /** Loads a `physics3.json`. */
+  loadPhysics(json: string): void
+  /** Loads a `pose3.json`. */
+  loadPose(json: string): void
+  /**
+   * Loads one `motion3.json` as entry `index` of motion `group`.
+   * Fade times come from `model3.json` when it defines them.
+   */
+  loadMotion(group: string, index: number, json: string): void
+  /** Starts a loaded motion. Returns false if it isn't loaded or a higher priority motion is playing. */
+  startMotion(group: string, index: number, priority?: MotionPriority): boolean
+  /**
+   * Advances the model by `deltaSeconds`: motions (a random `Idle` motion
+   * whenever nothing plays), eye blink, breath, physics and pose.
+   * Pass 0 to just apply the current state.
+   */
+  update(deltaSeconds: number): void
 }
 
 export interface RnLive2d extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
-  /** Loads a `.moc3` file. Throws if the moc is invalid or inconsistent. */
-  loadModel(moc: ArrayBuffer): Live2DModel
+  /**
+   * Loads a `.moc3` file with its `model3.json` (used for eye blink and lip
+   * sync parameters and motion fade times). Throws if the moc is invalid.
+   */
+  loadModel(moc: ArrayBuffer, settingsJson: string): Live2DModel
 }

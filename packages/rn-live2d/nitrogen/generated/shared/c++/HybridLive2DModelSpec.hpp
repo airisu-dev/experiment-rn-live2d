@@ -15,10 +15,14 @@
 
 // Forward declaration of `DrawableData` to properly resolve imports.
 namespace margelo::nitro::rnlive2d { struct DrawableData; }
+// Forward declaration of `MotionPriority` to properly resolve imports.
+namespace margelo::nitro::rnlive2d { enum class MotionPriority; }
 
 #include "DrawableData.hpp"
 #include <vector>
 #include <string>
+#include "MotionPriority.hpp"
+#include <optional>
 
 namespace margelo::nitro::rnlive2d {
 
@@ -57,9 +61,11 @@ namespace margelo::nitro::rnlive2d {
     public:
       // Methods
       virtual std::vector<DrawableData> getDrawables() = 0;
-      virtual void setPartOpacity(const std::string& id, double opacity) = 0;
-      virtual void setParameterValue(const std::string& id, double value) = 0;
-      virtual void update() = 0;
+      virtual void loadPhysics(const std::string& json) = 0;
+      virtual void loadPose(const std::string& json) = 0;
+      virtual void loadMotion(const std::string& group, double index, const std::string& json) = 0;
+      virtual bool startMotion(const std::string& group, double index, std::optional<MotionPriority> priority) = 0;
+      virtual void update(double deltaSeconds) = 0;
 
     protected:
       // Hybrid Setup

@@ -1,82 +1,66 @@
 #include "HybridLive2DModel.hpp"
 #include <algorithm>
-#include <cstring>
 #include <numeric>
-#include <stdexcept>
+#include "CubismSetup.hpp"
+#include "Live2DCubismCore.hpp"
 
 namespace margelo::nitro::rnlive2d {
 
+using namespace Live2D::Cubism::Core;
+
 namespace {
-
-AlignedBuffer allocateAligned(size_t alignment, size_t size) {
-    void* p = nullptr;
-    if (posix_memalign(&p, alignment, size) != 0) {
-        throw std::runtime_error("Live2D: out of memory");
-    }
-    return AlignedBuffer(p);
-}
-
-int findId(const char** ids, int count, const std::string& id) {
-    for (int i = 0; i < count; ++i) {
-        if (id == ids[i]) return i;
-    }
-    return -1;
-}
 
 template <typename T>
 std::shared_ptr<ArrayBuffer> copyToArrayBuffer(const T* data, size_t count) {
     return ArrayBuffer::copy(reinterpret_cast<const uint8_t*>(data), count * sizeof(T));
 }
 
+Live2DUserModel::Priority toPriority(std::optional<MotionPriority> priority) {
+    switch (priority.value_or(MotionPriority::NORMAL)) {
+        case MotionPriority::IDLE: return Live2DUserModel::PriorityIdle;
+        case MotionPriority::FORCE: return Live2DUserModel::PriorityForce;
+        default: return Live2DUserModel::PriorityNormal;
+    }
+}
+
 } // namespace
 
-HybridLive2DModel::HybridLive2DModel(const uint8_t* mocData, size_t mocSize)
+HybridLive2DModel::HybridLive2DModel(const uint8_t* mocData, size_t mocSize, const std::string& settingsJson)
     : HybridObject(TAG), HybridLive2DModelSpec() {
-    if (mocData == nullptr || mocSize == 0) {
-        throw std::runtime_error("Live2D: moc is empty");
-    }
-    const auto size = static_cast<unsigned int>(mocSize);
+    // The Framework must be started before any of its objects are created.
+    ensureCubismFramework();
+    _userModel = std::make_unique<Live2DUserModel>(mocData, mocSize, settingsJson);
 
-    _mocBuffer = allocateAligned(csmAlignofMoc, mocSize);
-    std::memcpy(_mocBuffer.get(), mocData, mocSize);
-
-    if (csmGetMocVersion(_mocBuffer.get(), size) > csmGetLatestMocVersion()) {
-        throw std::runtime_error("Live2D: moc version is newer than this Cubism Core");
-    }
-    if (!csmHasMocConsistency(_mocBuffer.get(), size)) {
-        throw std::runtime_error("Live2D: moc is invalid or corrupted");
-    }
-    csmMoc* moc = csmReviveMocInPlace(_mocBuffer.get(), size);
-    if (moc == nullptr) {
-        throw std::runtime_error("Live2D: failed to revive moc");
-    }
-
-    const unsigned int modelSize = csmGetSizeofModel(moc);
-    _modelBuffer = allocateAligned(csmAlignofModel, modelSize);
-    _model = csmInitializeModelInPlace(moc, _modelBuffer.get(), modelSize);
-    if (_model == nullptr) {
-        throw std::runtime_error("Live2D: failed to initialize model");
-    }
+    csmVector2 size{}, origin{};
+    csmReadCanvasInfo(_userModel->model()->GetModel(), &size, &origin, &_pixelsPerUnit);
+    _canvasWidth = size.X;
+    _canvasHeight = size.Y;
+    _originX = origin.X;
+    _originY = origin.Y;
 
     // Compute vertex positions, opacities and render orders for the default parameters.
-    csmUpdateModel(_model);
-    csmReadCanvasInfo(_model, &_canvasSize, &_canvasOrigin, &_pixelsPerUnit);
+    _userModel->update(0);
+}
+
+double HybridLive2DModel::getDrawableCount() {
+    return csmGetDrawableCount(_userModel->model()->GetModel());
 }
 
 std::vector<DrawableData> HybridLive2DModel::getDrawables() {
-    const int count = csmGetDrawableCount(_model);
-    const int* renderOrders = csmGetRenderOrders(_model);
-    const csmFlags* dynamicFlags = csmGetDrawableDynamicFlags(_model);
-    const csmFlags* constantFlags = csmGetDrawableConstantFlags(_model);
-    const int* textureIndices = csmGetDrawableTextureIndices(_model);
-    const float* opacities = csmGetDrawableOpacities(_model);
-    const int* vertexCounts = csmGetDrawableVertexCounts(_model);
-    const csmVector2** positions = csmGetDrawableVertexPositions(_model);
-    const csmVector2** uvs = csmGetDrawableVertexUvs(_model);
-    const int* indexCounts = csmGetDrawableIndexCounts(_model);
-    const unsigned short** indices = csmGetDrawableIndices(_model);
-    const int* maskCounts = csmGetDrawableMaskCounts(_model);
-    const int** masks = csmGetDrawableMasks(_model);
+    const csmModel* model = _userModel->model()->GetModel();
+    const int count = csmGetDrawableCount(model);
+    const int* renderOrders = csmGetRenderOrders(model);
+    const csmFlags* dynamicFlags = csmGetDrawableDynamicFlags(model);
+    const csmFlags* constantFlags = csmGetDrawableConstantFlags(model);
+    const int* textureIndices = csmGetDrawableTextureIndices(model);
+    const float* opacities = csmGetDrawableOpacities(model);
+    const int* vertexCounts = csmGetDrawableVertexCounts(model);
+    const csmVector2** positions = csmGetDrawableVertexPositions(model);
+    const csmVector2** uvs = csmGetDrawableVertexUvs(model);
+    const int* indexCounts = csmGetDrawableIndexCounts(model);
+    const unsigned short** indices = csmGetDrawableIndices(model);
+    const int* maskCounts = csmGetDrawableMaskCounts(model);
+    const int** masks = csmGetDrawableMasks(model);
 
     std::vector<int> order(count);
     std::iota(order.begin(), order.end(), 0);
@@ -99,21 +83,24 @@ std::vector<DrawableData> HybridLive2DModel::getDrawables() {
     return result;
 }
 
-void HybridLive2DModel::setPartOpacity(const std::string& id, double opacity) {
-    const int i = findId(csmGetPartIds(_model), csmGetPartCount(_model), id);
-    if (i >= 0) csmGetPartOpacities(_model)[i] = static_cast<float>(opacity);
+void HybridLive2DModel::loadPhysics(const std::string& json) {
+    _userModel->loadPhysics(json);
 }
 
-void HybridLive2DModel::setParameterValue(const std::string& id, double value) {
-    const int i = findId(csmGetParameterIds(_model), csmGetParameterCount(_model), id);
-    if (i < 0) return;
-    const float min = csmGetParameterMinimumValues(_model)[i];
-    const float max = csmGetParameterMaximumValues(_model)[i];
-    csmGetParameterValues(_model)[i] = std::clamp(static_cast<float>(value), min, max);
+void HybridLive2DModel::loadPose(const std::string& json) {
+    _userModel->loadPose(json);
 }
 
-void HybridLive2DModel::update() {
-    csmUpdateModel(_model);
+void HybridLive2DModel::loadMotion(const std::string& group, double index, const std::string& json) {
+    _userModel->loadMotion(group, static_cast<int>(index), json);
+}
+
+bool HybridLive2DModel::startMotion(const std::string& group, double index, std::optional<MotionPriority> priority) {
+    return _userModel->startMotion(group, static_cast<int>(index), toPriority(priority));
+}
+
+void HybridLive2DModel::update(double deltaSeconds) {
+    _userModel->update(static_cast<float>(deltaSeconds));
 }
 
 } // namespace margelo::nitro::rnlive2d
