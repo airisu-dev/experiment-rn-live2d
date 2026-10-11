@@ -21,8 +21,8 @@ namespace margelo::nitro::rnlive2d { enum class MotionPriority; }
 #include "DrawableData.hpp"
 #include <vector>
 #include <string>
-#include "MotionPriority.hpp"
 #include <optional>
+#include "MotionPriority.hpp"
 
 namespace margelo::nitro::rnlive2d {
 
@@ -64,7 +64,14 @@ namespace margelo::nitro::rnlive2d {
       virtual void loadPhysics(const std::string& json) = 0;
       virtual void loadPose(const std::string& json) = 0;
       virtual void loadMotion(const std::string& group, double index, const std::string& json) = 0;
-      virtual bool startMotion(const std::string& group, double index, std::optional<MotionPriority> priority) = 0;
+      virtual bool startMotion(const std::string& group, std::optional<double> index, std::optional<MotionPriority> priority) = 0;
+      virtual void loadExpression(const std::string& name, const std::string& json) = 0;
+      virtual bool setExpression(const std::optional<std::string>& name) = 0;
+      virtual void clearExpression() = 0;
+      virtual void setParameter(const std::string& id, double value) = 0;
+      virtual void clearParameter(const std::string& id) = 0;
+      virtual void focus(double x, double y) = 0;
+      virtual std::vector<std::string> hitTest(double x, double y) = 0;
       virtual void update(double deltaSeconds) = 0;
 
     protected:

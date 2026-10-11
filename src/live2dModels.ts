@@ -47,6 +47,16 @@ export const MODELS = {
         require('@/assets/live2d/Mao/motions/special_03.motion3.json'),
       ],
     },
+    expressions: {
+      exp_01: require('@/assets/live2d/Mao/expressions/exp_01.exp3.json'),
+      exp_02: require('@/assets/live2d/Mao/expressions/exp_02.exp3.json'),
+      exp_03: require('@/assets/live2d/Mao/expressions/exp_03.exp3.json'),
+      exp_04: require('@/assets/live2d/Mao/expressions/exp_04.exp3.json'),
+      exp_05: require('@/assets/live2d/Mao/expressions/exp_05.exp3.json'),
+      exp_06: require('@/assets/live2d/Mao/expressions/exp_06.exp3.json'),
+      exp_07: require('@/assets/live2d/Mao/expressions/exp_07.exp3.json'),
+      exp_08: require('@/assets/live2d/Mao/expressions/exp_08.exp3.json'),
+    },
   },
 } satisfies Record<string, Live2DModelSource>;
 

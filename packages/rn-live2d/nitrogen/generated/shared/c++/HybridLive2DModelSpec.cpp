@@ -25,6 +25,13 @@ namespace margelo::nitro::rnlive2d {
       prototype.registerHybridMethod("loadPose", &HybridLive2DModelSpec::loadPose);
       prototype.registerHybridMethod("loadMotion", &HybridLive2DModelSpec::loadMotion);
       prototype.registerHybridMethod("startMotion", &HybridLive2DModelSpec::startMotion);
+      prototype.registerHybridMethod("loadExpression", &HybridLive2DModelSpec::loadExpression);
+      prototype.registerHybridMethod("setExpression", &HybridLive2DModelSpec::setExpression);
+      prototype.registerHybridMethod("clearExpression", &HybridLive2DModelSpec::clearExpression);
+      prototype.registerHybridMethod("setParameter", &HybridLive2DModelSpec::setParameter);
+      prototype.registerHybridMethod("clearParameter", &HybridLive2DModelSpec::clearParameter);
+      prototype.registerHybridMethod("focus", &HybridLive2DModelSpec::focus);
+      prototype.registerHybridMethod("hitTest", &HybridLive2DModelSpec::hitTest);
       prototype.registerHybridMethod("update", &HybridLive2DModelSpec::update);
     });
   }

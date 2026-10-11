@@ -43,10 +43,12 @@ HybridLive2DModel::HybridLive2DModel(const uint8_t* mocData, size_t mocSize, con
 }
 
 double HybridLive2DModel::getDrawableCount() {
+    std::lock_guard lock(_mutex);
     return csmGetDrawableCount(_userModel->model()->GetModel());
 }
 
 std::vector<DrawableData> HybridLive2DModel::getDrawables() {
+    std::lock_guard lock(_mutex);
     const csmModel* model = _userModel->model()->GetModel();
     const int count = csmGetDrawableCount(model);
     const int* renderOrders = csmGetRenderOrders(model);
@@ -84,22 +86,63 @@ std::vector<DrawableData> HybridLive2DModel::getDrawables() {
 }
 
 void HybridLive2DModel::loadPhysics(const std::string& json) {
+    std::lock_guard lock(_mutex);
     _userModel->loadPhysics(json);
 }
 
 void HybridLive2DModel::loadPose(const std::string& json) {
+    std::lock_guard lock(_mutex);
     _userModel->loadPose(json);
 }
 
 void HybridLive2DModel::loadMotion(const std::string& group, double index, const std::string& json) {
+    std::lock_guard lock(_mutex);
     _userModel->loadMotion(group, static_cast<int>(index), json);
 }
 
-bool HybridLive2DModel::startMotion(const std::string& group, double index, std::optional<MotionPriority> priority) {
-    return _userModel->startMotion(group, static_cast<int>(index), toPriority(priority));
+bool HybridLive2DModel::startMotion(const std::string& group, std::optional<double> index, std::optional<MotionPriority> priority) {
+    std::lock_guard lock(_mutex);
+    if (!index) return _userModel->startRandomMotion(group, toPriority(priority));
+    return _userModel->startMotion(group, static_cast<int>(*index), toPriority(priority));
+}
+
+void HybridLive2DModel::loadExpression(const std::string& name, const std::string& json) {
+    std::lock_guard lock(_mutex);
+    _userModel->loadExpression(name, json);
+}
+
+bool HybridLive2DModel::setExpression(const std::optional<std::string>& name) {
+    std::lock_guard lock(_mutex);
+    return name ? _userModel->setExpression(*name) : _userModel->setRandomExpression();
+}
+
+void HybridLive2DModel::clearExpression() {
+    std::lock_guard lock(_mutex);
+    _userModel->clearExpression();
+}
+
+void HybridLive2DModel::setParameter(const std::string& id, double value) {
+    std::lock_guard lock(_mutex);
+    _userModel->setParameter(id, static_cast<float>(value));
+}
+
+void HybridLive2DModel::clearParameter(const std::string& id) {
+    std::lock_guard lock(_mutex);
+    _userModel->clearParameter(id);
+}
+
+void HybridLive2DModel::focus(double x, double y) {
+    std::lock_guard lock(_mutex);
+    _userModel->focus(static_cast<float>(std::clamp(x, -1.0, 1.0)), static_cast<float>(std::clamp(y, -1.0, 1.0)));
+}
+
+std::vector<std::string> HybridLive2DModel::hitTest(double x, double y) {
+    std::lock_guard lock(_mutex);
+    return _userModel->hitTest(static_cast<float>(x), static_cast<float>(y));
 }
 
 void HybridLive2DModel::update(double deltaSeconds) {
+    std::lock_guard lock(_mutex);
     _userModel->update(static_cast<float>(deltaSeconds));
 }
 

@@ -6,9 +6,15 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Canvas } from 'react-native-skia';
-import { Live2D, useLive2DModel, type Live2DModelSource } from 'rn-live2d';
+import {
+  Live2D,
+  useLive2DGesture,
+  useLive2DModel,
+  type Live2DModelSource,
+} from 'rn-live2d';
 import { MODEL_NAMES, MODELS, type ModelName } from '@/live2dModels';
 
 export default function Home() {
@@ -48,12 +54,16 @@ function ModelView({ source }: { source: Live2DModelSource }) {
     : 1;
   const x = model ? (size.width - model.width * scale) / 2 : 0;
   const y = model ? (size.height - model.height * scale) / 2 : 0;
+  // Follow the finger; tap the body (or Mao's head) to play a motion (or expression).
+  const gesture = useLive2DGesture(model, { x, y, scale });
 
   return (
     <View style={styles.modelView} onLayout={onLayout}>
-      <Canvas style={styles.canvas}>
-        <Live2D model={model} x={x} y={y} scale={scale} />
-      </Canvas>
+      <GestureDetector gesture={gesture}>
+        <Canvas style={styles.canvas}>
+          <Live2D model={model} x={x} y={y} scale={scale} />
+        </Canvas>
+      </GestureDetector>
       {!model && <Text style={styles.loading}>Loading model…</Text>}
     </View>
   );
