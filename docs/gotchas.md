@@ -3,7 +3,7 @@
 ## Licensing
 Cubism Core is proprietary. It most likely **cannot be bundled** in the npm package. `pixi-live2d-display` handles this by making users supply the Core themselves. Plan for an **Expo config plugin or postinstall step** that points to a Core the user downloads. Read the Live2D license terms carefully before publishing.
 
-The Core, the Framework and the sample models all come from the one SDK download in the gitignored `packages/rn-live2d/vendor/CubismSdkForNative/`, so their versions always match and nothing from Live2D is committed. The Framework is also on GitHub (`Live2D/CubismNativeFramework`), but the Core is not, so the SDK download is needed anyway. If we ever need to patch the Framework, a forked submodule is the way to track it.
+The **Cubism Native Framework** is open source and on GitHub, so it is a git submodule at `packages/rn-live2d/third_party/CubismNativeFramework`. The repo only stores the link and the pinned commit, never the files. The **Core** and the sample models are not on GitHub: they only ship in the SDK download, which `scripts/fetch-cubism-sdk.sh` puts in the gitignored `packages/rn-live2d/vendor/CubismSdkForNative/`. **Keep the two on the same version:** the submodule's tag (`5-r.5`) must match `VERSION` in the fetch script. To upgrade, check out the new tag in the submodule and update `VERSION` and `SHA256` together.
 
 ## Assets
 `model3.json` references `.moc3`, textures, motions and physics files by relative path.

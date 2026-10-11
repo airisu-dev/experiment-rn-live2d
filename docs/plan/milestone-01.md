@@ -31,7 +31,7 @@ The Framework (motions, physics, its JSON parsing) can wait until roadmap milest
 
 ### 1. Vendor Cubism Core (not committed to git)
 
-- Extract the whole SDK to `packages/rn-live2d/vendor/CubismSdkForNative/` (gitignored). Its `Core` and sample models are used now; its `Framework` from milestone 3. CMake uses `Core/include` and `Core/lib/android/<abi>/libLive2DCubismCore.a`; override with `-DCUBISM_CORE_DIR`.
+- Extract the whole SDK to `packages/rn-live2d/vendor/CubismSdkForNative/` (gitignored). Only its `Core` and sample models are used; the Framework comes from a git submodule (milestone 3). CMake uses `Core/include` and `Core/lib/android/<abi>/libLive2DCubismCore.a`; override with `-DCUBISM_CORE_DIR`.
 - SDK 5-r.5 ships Android Core only for `arm64-v8a`, `x86`, `x86_64` (no `armeabi-v7a`), so `app.json` sets `expo-build-properties` `android.buildArchs` to those three.
 - Sample models are copied to `assets/live2d/` (gitignored).
 - In `android/CMakeLists.txt`:

@@ -9,9 +9,9 @@ Goal: the model moves. Idle motion loops, with physics, eye blink and breath, at
 
 ## Native: bring in the Cubism Native Framework
 
-- Compile `vendor/CubismSdkForNative/Framework/src` (from the same SDK download as the Core, so their versions always match) into `RnLive2d`, **without** any `Rendering/<backend>` folder. The Framework still includes the abstract `Rendering/CubismRenderer.hpp`, so check whether a small stub renderer is needed, or skip `CubismUserModel` and drive the modules directly.
+- Compile the Framework's `src` into `RnLive2d`, **without** any `Rendering/<backend>` folder. The Framework still includes the abstract `Rendering/CubismRenderer.hpp`, so check whether a small stub renderer is needed, or skip `CubismUserModel` and drive the modules directly.
 - Modules to use: `CubismMotionManager` + `CubismMotion`, `CubismPhysics`, `CubismPose` (replaces milestone 2's JS pose), `CubismEyeBlink`, `CubismBreath`.
-- Add the Framework sources to both `android/CMakeLists.txt` and the podspec. CI already gets them from the SDK download (see [milestone 1, step 7](./milestone-01.md#7-ios)).
+- Add the Framework sources to both `android/CMakeLists.txt` and the podspec. The Framework is a git submodule (`third_party/CubismNativeFramework`, tag `5-r.5`, matching the Core); CI checks it out with `submodules: true`.
 - Add `CubismFramework::StartUp` / `Initialize` once per process, with an allocator.
 - New model methods: `update(dt)`, `motion(group, index?)`, and loading of motion / physics / pose JSON (read as strings in JS, passed to C++).
 
@@ -34,12 +34,13 @@ The single `SkPicture` no longer works, so redraw every frame:
 
 ## Step 1 notes
 
-- `android/CMakeLists.txt` builds every `.cpp` under `vendor/CubismSdkForNative/Framework/src` into a static `CubismFramework` library, minus the `Rendering/<backend>` folders. That's 49 files, compiled with `-w` because it's third-party code. It's linked before the Core.
+- `android/CMakeLists.txt` builds every `.cpp` under `third_party/CubismNativeFramework/src` (the git submodule) into a static `CubismFramework` library, minus the `Rendering/<backend>` folders. That's 49 files, compiled with `-w` because it's third-party code. It's linked before the Core.
 - No stub renderer class is needed. Outside the backends, the Framework only calls two static functions that each backend normally defines: `CubismRenderer::Create` (used by `CubismUserModel`) and `CubismRenderer::StaticRelease` (used by `CubismFramework::Dispose`). `cpp/CubismRendererStub.cpp` defines them as no-ops, with `Create` returning `nullptr`. So **don't use `CubismUserModel`'s renderer**; drive `CubismModel` and the motion/physics/pose classes directly.
 - The Framework needs no platform defines outside the renderer.
 - `cpp/CubismSetup.cpp`: `ensureCubismFramework()` runs `StartUp` + `Initialize` once per process (`std::call_once`), with an aligned allocator and a log function (logcat tag `RnLive2d` on Android). It's called from the `HybridLive2DModel` constructor.
 - Checked on the emulator: `libRnLive2d.so` contains the Framework symbols, and logcat shows `Live2D Cubism Core version: 06.00.0001`, `CubismFramework::StartUp() is complete.` and `Initialize() is complete.`. Rendering is unchanged.
-- iOS: the podspec adds `Framework/src/**/*.{hpp,cpp}` to `source_files`, excludes `Rendering/*/**/*` (the backends), and adds `Framework/src` to `HEADER_SEARCH_PATHS`. The stub and setup files come in with `cpp/**`. No header basename collisions (checked), so the flat header lookup is safe.
+- Both builds stop with "Run `git submodule update --init`" if the submodule is missing.
+- iOS: the podspec adds `third_party/CubismNativeFramework/src/**/*.{hpp,cpp}` to `source_files`, excludes `Rendering/*/**/*` (the backends), and adds that `src` to `HEADER_SEARCH_PATHS`. The stub and setup files come in with `cpp/**`. No header basename collisions (checked), so the flat header lookup is safe.
 
 ## Step 2 notes
 

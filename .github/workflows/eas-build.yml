@@ -73,6 +73,8 @@ jobs:
           # expo-updates derives a runtime version from the git history in some
           # configurations, so a shallow clone can change the built artifact.
           fetch-depth: 0
+          # The Cubism Native Framework is a submodule (packages/rn-live2d/third_party).
+          submodules: true
 
       - name: Read eas.json
         shell: bash

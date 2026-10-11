@@ -6,6 +6,8 @@
 # Running this means accepting Live2D's license terms, included in the SDK as LICENSE.md.
 set -euo pipefail
 
+# Keep in step with the Cubism Native Framework submodule
+# (packages/rn-live2d/third_party/CubismNativeFramework), checked out at the same tag.
 VERSION="5-r.5"
 SHA256="7ff3a4bbc19c0a8728965aa522ab77eb11b252916453e68a8a78d3b71188bb12"
 URL="https://cubism.live2d.com/sdk-native/bin/CubismSdkForNative-${VERSION}.zip"

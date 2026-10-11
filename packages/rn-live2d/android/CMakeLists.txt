@@ -21,10 +21,15 @@ endif()
 add_library(Live2DCubismCore STATIC IMPORTED)
 set_target_properties(Live2DCubismCore PROPERTIES IMPORTED_LOCATION "${CUBISM_CORE_LIB}")
 
-# Cubism Native Framework (motions, physics, pose, ...) from the same SDK download.
+# Cubism Native Framework (motions, physics, pose, ...): the git submodule in
+# ../third_party, pinned to the tag matching the Core version.
 # Its Rendering/<backend> folders are left out: we draw with Skia
 # (see ../cpp/CubismRendererStub.cpp).
-set (CUBISM_FRAMEWORK_DIR "${CUBISM_CORE_DIR}/../Framework/src")
+set (CUBISM_FRAMEWORK_DIR "${CMAKE_SOURCE_DIR}/../third_party/CubismNativeFramework/src")
+if (NOT EXISTS "${CUBISM_FRAMEWORK_DIR}/CubismFramework.cpp")
+        message(FATAL_ERROR "Cubism Native Framework not found at ${CUBISM_FRAMEWORK_DIR}. "
+                "Run `git submodule update --init`.")
+endif()
 file(GLOB_RECURSE CUBISM_FRAMEWORK_SOURCES "${CUBISM_FRAMEWORK_DIR}/*.cpp")
 list(FILTER CUBISM_FRAMEWORK_SOURCES EXCLUDE REGEX "/Rendering/[^/]+/")
 add_library(CubismFramework STATIC ${CUBISM_FRAMEWORK_SOURCES})

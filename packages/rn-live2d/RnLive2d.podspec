@@ -10,6 +10,13 @@ unless File.directory?(File.join(cubism_core_dir, "Live2DCubismCore.xcframework"
         "Run `bun run fetch:cubism` on macOS first."
 end
 
+# Cubism Native Framework: git submodule, pinned to the tag matching the Core version.
+cubism_framework_dir = File.join(__dir__, "third_party", "CubismNativeFramework", "src")
+unless File.file?(File.join(cubism_framework_dir, "CubismFramework.cpp"))
+  raise "[RnLive2d] Cubism Native Framework not found in #{cubism_framework_dir}. " \
+        "Run `git submodule update --init`."
+end
+
 Pod::Spec.new do |s|
   s.name         = "RnLive2d"
   s.version      = package["version"]
@@ -28,19 +35,19 @@ Pod::Spec.new do |s|
     "ios/**/*.{m,mm}",
     # Implementation (C++ objects)
     "cpp/**/*.{hpp,cpp}",
-    # Cubism Native Framework (motions, physics, pose, ...) from the same SDK download
-    "vendor/CubismSdkForNative/Framework/src/**/*.{hpp,cpp}",
+    # Cubism Native Framework (motions, physics, pose, ...)
+    "third_party/CubismNativeFramework/src/**/*.{hpp,cpp}",
   ]
   # Its Rendering/<backend> folders are left out: we draw with Skia
   # (see cpp/CubismRendererStub.cpp).
-  s.exclude_files = "vendor/CubismSdkForNative/Framework/src/Rendering/*/**/*"
+  s.exclude_files = "third_party/CubismNativeFramework/src/Rendering/*/**/*"
 
   s.vendored_frameworks = "vendor/CubismSdkForNative/Core/Live2DCubismCore.xcframework"
   # Set before add_nitrogen_files, which merges its own settings into this.
   s.pod_target_xcconfig = {
     "HEADER_SEARCH_PATHS" => [
       "\"$(PODS_TARGET_SRCROOT)/vendor/CubismSdkForNative/Core/include\"",
-      "\"$(PODS_TARGET_SRCROOT)/vendor/CubismSdkForNative/Framework/src\"",
+      "\"$(PODS_TARGET_SRCROOT)/third_party/CubismNativeFramework/src\"",
     ].join(" "),
   }
 
