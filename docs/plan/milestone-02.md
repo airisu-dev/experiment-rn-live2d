@@ -4,7 +4,7 @@
 - Android: **done** (2026-10-11), checked on the emulator:
   - Hiyori shows one arm set; masked eyes, blush and hair shading are intact, with no dark edges.
   - Mao (262 drawables, 37 masked, 10 of them inverted): paint splashes are clipped to the clothes, and the pose shows one arm set.
-- iOS: **to do**: push and run `rnd build --platform ios --profile development`. The same C++/JS is shared, so no iOS-specific changes are expected.
+- iOS: **done** (2026-10-11). CI build of `b5bd772` (`rnd build --platform ios --profile development`); Hiyori, Mao and the model switcher confirmed on the simulator.
 
 See [Implementation notes](#implementation-notes).
 
