@@ -5,6 +5,7 @@
 #include <vector>
 #include "HybridLive2DModelSpec.hpp"
 #include "Live2DUserModel.hpp"
+#include "SkiaDrawer.hpp"
 
 namespace margelo::nitro::rnlive2d {
 
@@ -34,10 +35,25 @@ class HybridLive2DModel : public HybridLive2DModelSpec {
         std::vector<std::string> hitTest(double x, double y) override;
         void update(double deltaSeconds) override;
 
+    protected:
+        // Adds the raw JSI methods that take react-native-skia objects, when built with Skia.
+        void loadHybridMethods() override;
+
+#if RN_LIVE2D_SKIA
+    private:
+        // setTextures(shaders: SkShader[], sizes: number[]): void
+        jsi::Value setTexturesRaw(jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* args, size_t count);
+        // drawTo(canvas: SkCanvas, wantStats: boolean): DrawStats | undefined
+        jsi::Value drawToRaw(jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* args, size_t count);
+#endif
+
     private:
         // The model is updated on the animation thread and controlled from the JS thread.
         std::mutex _mutex;
         std::unique_ptr<Live2DUserModel> _userModel;
+#if RN_LIVE2D_SKIA
+        SkiaDrawer _drawer;
+#endif
         float _canvasWidth = 0;
         float _canvasHeight = 0;
         float _originX = 0;
