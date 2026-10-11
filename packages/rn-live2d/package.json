@@ -62,7 +62,8 @@
     "react-native": "*",
     "react-native-nitro-modules": "*",
     "react-native-reanimated": "*",
-    "react-native-skia": "*"
+    "react-native-skia": "*",
+    "react-native-worklets": "*"
   },
   "eslintConfig": {
     "root": true,
