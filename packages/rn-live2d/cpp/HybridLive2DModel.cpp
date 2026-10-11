@@ -16,6 +16,13 @@ AlignedBuffer allocateAligned(size_t alignment, size_t size) {
     return AlignedBuffer(p);
 }
 
+int findId(const char** ids, int count, const std::string& id) {
+    for (int i = 0; i < count; ++i) {
+        if (id == ids[i]) return i;
+    }
+    return -1;
+}
+
 template <typename T>
 std::shared_ptr<ArrayBuffer> copyToArrayBuffer(const T* data, size_t count) {
     return ArrayBuffer::copy(reinterpret_cast<const uint8_t*>(data), count * sizeof(T));
@@ -68,6 +75,8 @@ std::vector<DrawableData> HybridLive2DModel::getDrawables() {
     const csmVector2** uvs = csmGetDrawableVertexUvs(_model);
     const int* indexCounts = csmGetDrawableIndexCounts(_model);
     const unsigned short** indices = csmGetDrawableIndices(_model);
+    const int* maskCounts = csmGetDrawableMaskCounts(_model);
+    const int** masks = csmGetDrawableMasks(_model);
 
     std::vector<int> order(count);
     std::iota(order.begin(), order.end(), 0);
@@ -77,17 +86,34 @@ std::vector<DrawableData> HybridLive2DModel::getDrawables() {
     std::vector<DrawableData> result;
     result.reserve(count);
     for (int i : order) {
-        if (!(dynamicFlags[i] & csmIsVisible) || opacities[i] <= 0.0f || indexCounts[i] == 0) {
-            continue;
-        }
-        result.emplace_back(textureIndices[i],
+        result.emplace_back(i,
+                            (dynamicFlags[i] & csmIsVisible) != 0,
+                            textureIndices[i],
                             opacities[i],
                             constantFlags[i],
+                            std::vector<double>(masks[i], masks[i] + maskCounts[i]),
                             copyToArrayBuffer(positions[i], vertexCounts[i]),
                             copyToArrayBuffer(uvs[i], vertexCounts[i]),
                             copyToArrayBuffer(indices[i], indexCounts[i]));
     }
     return result;
+}
+
+void HybridLive2DModel::setPartOpacity(const std::string& id, double opacity) {
+    const int i = findId(csmGetPartIds(_model), csmGetPartCount(_model), id);
+    if (i >= 0) csmGetPartOpacities(_model)[i] = static_cast<float>(opacity);
+}
+
+void HybridLive2DModel::setParameterValue(const std::string& id, double value) {
+    const int i = findId(csmGetParameterIds(_model), csmGetParameterCount(_model), id);
+    if (i < 0) return;
+    const float min = csmGetParameterMinimumValues(_model)[i];
+    const float max = csmGetParameterMaximumValues(_model)[i];
+    csmGetParameterValues(_model)[i] = std::clamp(static_cast<float>(value), min, max);
+}
+
+void HybridLive2DModel::update() {
+    csmUpdateModel(_model);
 }
 
 } // namespace margelo::nitro::rnlive2d

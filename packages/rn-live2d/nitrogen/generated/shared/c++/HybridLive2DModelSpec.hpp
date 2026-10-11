@@ -18,6 +18,7 @@ namespace margelo::nitro::rnlive2d { struct DrawableData; }
 
 #include "DrawableData.hpp"
 #include <vector>
+#include <string>
 
 namespace margelo::nitro::rnlive2d {
 
@@ -56,6 +57,9 @@ namespace margelo::nitro::rnlive2d {
     public:
       // Methods
       virtual std::vector<DrawableData> getDrawables() = 0;
+      virtual void setPartOpacity(const std::string& id, double opacity) = 0;
+      virtual void setParameterValue(const std::string& id, double value) = 0;
+      virtual void update() = 0;
 
     protected:
       // Hybrid Setup

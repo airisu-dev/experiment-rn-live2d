@@ -25,6 +25,9 @@ class HybridLive2DModel : public HybridLive2DModelSpec {
         double getDrawableCount() override { return csmGetDrawableCount(_model); }
 
         std::vector<DrawableData> getDrawables() override;
+        void setPartOpacity(const std::string& id, double opacity) override;
+        void setParameterValue(const std::string& id, double value) override;
+        void update() override;
 
     private:
         // The model references the moc, so the moc buffer must outlive it.

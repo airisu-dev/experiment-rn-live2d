@@ -30,6 +30,7 @@
 
 
 
+#include <vector>
 #include <NitroModules/ArrayBuffer.hpp>
 
 namespace margelo::nitro::rnlive2d {
@@ -39,16 +40,19 @@ namespace margelo::nitro::rnlive2d {
    */
   struct DrawableData final {
   public:
+    double index     SWIFT_PRIVATE;
+    bool visible     SWIFT_PRIVATE;
     double textureIndex     SWIFT_PRIVATE;
     double opacity     SWIFT_PRIVATE;
     double constantFlags     SWIFT_PRIVATE;
+    std::vector<double> masks     SWIFT_PRIVATE;
     std::shared_ptr<ArrayBuffer> positions     SWIFT_PRIVATE;
     std::shared_ptr<ArrayBuffer> uvs     SWIFT_PRIVATE;
     std::shared_ptr<ArrayBuffer> indices     SWIFT_PRIVATE;
 
   public:
     DrawableData() = default;
-    explicit DrawableData(double textureIndex, double opacity, double constantFlags, std::shared_ptr<ArrayBuffer> positions, std::shared_ptr<ArrayBuffer> uvs, std::shared_ptr<ArrayBuffer> indices): textureIndex(textureIndex), opacity(opacity), constantFlags(constantFlags), positions(positions), uvs(uvs), indices(indices) {}
+    explicit DrawableData(double index, bool visible, double textureIndex, double opacity, double constantFlags, std::vector<double> masks, std::shared_ptr<ArrayBuffer> positions, std::shared_ptr<ArrayBuffer> uvs, std::shared_ptr<ArrayBuffer> indices): index(index), visible(visible), textureIndex(textureIndex), opacity(opacity), constantFlags(constantFlags), masks(masks), positions(positions), uvs(uvs), indices(indices) {}
 
   public:
     friend bool operator==(const DrawableData& lhs, const DrawableData& rhs) = default;
@@ -64,9 +68,12 @@ namespace margelo::nitro {
     static inline margelo::nitro::rnlive2d::DrawableData fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::rnlive2d::DrawableData(
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "visible"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "textureIndex"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "opacity"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "constantFlags"))),
+        JSIConverter<std::vector<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "masks"))),
         JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "positions"))),
         JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uvs"))),
         JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "indices")))
@@ -74,9 +81,12 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::rnlive2d::DrawableData& arg) {
       jsi::Object obj(runtime);
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "index"), JSIConverter<double>::toJSI(runtime, arg.index));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "visible"), JSIConverter<bool>::toJSI(runtime, arg.visible));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "textureIndex"), JSIConverter<double>::toJSI(runtime, arg.textureIndex));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "opacity"), JSIConverter<double>::toJSI(runtime, arg.opacity));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "constantFlags"), JSIConverter<double>::toJSI(runtime, arg.constantFlags));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "masks"), JSIConverter<std::vector<double>>::toJSI(runtime, arg.masks));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "positions"), JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, arg.positions));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "uvs"), JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, arg.uvs));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "indices"), JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, arg.indices));
@@ -90,9 +100,12 @@ namespace margelo::nitro {
       if (!nitro::isPlainObject(runtime, obj)) {
         return false;
       }
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "visible")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "textureIndex")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "opacity")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "constantFlags")))) return false;
+      if (!JSIConverter<std::vector<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "masks")))) return false;
       if (!JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "positions")))) return false;
       if (!JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uvs")))) return false;
       if (!JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "indices")))) return false;
