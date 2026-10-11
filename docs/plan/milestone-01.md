@@ -2,7 +2,7 @@
 
 **Status:**
 - Android: **done** (2026-10-11). Hiyori renders on an Android emulator (x86_64).
-- iOS: **in progress**: podspec and CI wiring done, waiting on the first CI build. See [step 7](#7-ios).
+- iOS: **done** (2026-10-11). Hiyori renders on the iOS simulator from a CI build (`rnd build --platform ios --profile development`). See [step 7](#7-ios).
 
 **Known issues** (fixed in [milestone 2](./milestone-02.md)):
 - Pose isn't applied, so Hiyori shows both arm sets.
