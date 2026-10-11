@@ -13,6 +13,7 @@ import {
   Live2D,
   useLive2DGesture,
   useLive2DModel,
+  type Live2DFrameStats,
   type Live2DModelContext,
 } from 'rn-live2d';
 import { MODEL_NAMES, MODELS, type ModelName } from '@/live2dModels';
@@ -46,6 +47,7 @@ export default function Home() {
 function ModelView({ source }: { source: Live2DModelContext }) {
   const model = useLive2DModel(source);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [stats, setStats] = useState<Live2DFrameStats | null>(null);
   const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);
 
   // Fit the model's canvas inside the view, centered.
@@ -61,10 +63,17 @@ function ModelView({ source }: { source: Live2DModelContext }) {
     <View style={styles.modelView} onLayout={onLayout}>
       <GestureDetector gesture={gesture}>
         <Canvas style={styles.canvas}>
-          <Live2D model={model} x={x} y={y} scale={scale} />
+          <Live2D
+            model={model}
+            x={x}
+            y={y}
+            scale={scale}
+            onFrameStats={setStats}
+          />
         </Canvas>
       </GestureDetector>
       {!model && <Text style={styles.loading}>Loading model…</Text>}
+      {stats && <Text style={styles.stats}>{formatStats(stats)}</Text>}
     </View>
   );
 }
@@ -86,4 +95,22 @@ const styles = StyleSheet.create({
   modelView: { flex: 1 },
   canvas: { flex: 1 },
   loading: { position: 'absolute', alignSelf: 'center', top: '50%' },
+  stats: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    fontSize: 11,
+    fontFamily: 'monospace',
+    color: '#4a5563',
+  },
 });
+
+// Animation loop timings, per frame, for checking performance on a device.
+function formatStats(s: Live2DFrameStats) {
+  const ms = (v: number) => v.toFixed(1);
+  return [
+    `${s.fps.toFixed(0)}/${s.targetFps.toFixed(0)} fps · work ${ms(s.workMs)} ms`,
+    `update ${ms(s.updateMs)} · copy ${ms(s.drawablesMs)} · draw ${ms(s.drawMs)} (mesh ${ms(s.meshMs)})`,
+    `meshes ${s.meshesBuilt.toFixed(0)} · layers ${s.layers.toFixed(0)}`,
+  ].join('\n');
+}

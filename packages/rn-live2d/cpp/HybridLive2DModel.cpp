@@ -146,4 +146,29 @@ void HybridLive2DModel::update(double deltaSeconds) {
     _userModel->update(static_cast<float>(deltaSeconds));
 }
 
+void HybridLive2DModel::loadHybridMethods() {
+    HybridLive2DModelSpec::loadHybridMethods();
+#if RN_LIVE2D_SKIA
+    registerHybrids(this, [](Prototype& prototype) {
+        prototype.registerRawHybridMethod("setTextures", 2, &HybridLive2DModel::setTexturesRaw);
+        prototype.registerRawHybridMethod("drawTo", 2, &HybridLive2DModel::drawToRaw);
+    });
+#endif
+}
+
+#if RN_LIVE2D_SKIA
+jsi::Value HybridLive2DModel::setTexturesRaw(jsi::Runtime& runtime, const jsi::Value&, const jsi::Value* args, size_t) {
+    std::lock_guard lock(_mutex);
+    _drawer.setTextures(runtime, args[0], args[1]);
+    return jsi::Value::undefined();
+}
+
+jsi::Value HybridLive2DModel::drawToRaw(jsi::Runtime& runtime, const jsi::Value&, const jsi::Value* args, size_t) {
+    std::lock_guard lock(_mutex);
+    const CanvasInfo info{_originX, _originY, _pixelsPerUnit};
+    return _drawer.draw(runtime, args[0], args[1].isBool() && args[1].getBool(),
+                        _userModel->model()->GetModel(), info);
+}
+#endif
+
 } // namespace margelo::nitro::rnlive2d

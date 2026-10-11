@@ -13,6 +13,7 @@ import {
   type SkShader,
   type SkVertices,
 } from 'react-native-skia'
+import { now } from './clock'
 import type { DrawableData } from './specs/rn-live2d.nitro'
 
 // Cubism constant flags (Live2DCubismCore.h).
@@ -49,6 +50,16 @@ function sameFloats(a: Float32Array, b: Float32Array): boolean {
   return true
 }
 
+/** Added to by a drawer when passed in, for frame stats. */
+export interface DrawStats {
+  /** Time spent building Skia vertices (`MakeVertices` and point arrays). */
+  meshMs: number
+  /** Meshes rebuilt because their vertices moved. */
+  meshesBuilt: number
+  /** `saveLayer`s for masks: two per masked drawable. */
+  layers: number
+}
+
 export interface CanvasInfo {
   width: number
   height: number
@@ -66,7 +77,7 @@ export function createDrawer(
   textures: SkImage[],
   shaders: SkShader[],
   { width, height, originX, originY, pixelsPerUnit }: CanvasInfo
-): (drawables: DrawableData[]) => SkPicture {
+): (drawables: DrawableData[], stats?: DrawStats) => SkPicture {
   'worklet'
   const bounds = Skia.XYWHRect(0, 0, width, height)
   const paint = Skia.Paint()
@@ -92,7 +103,7 @@ export function createDrawer(
     return data
   }
 
-  return (drawables) => {
+  return (drawables, stats) => {
     const byIndex = new Map(drawables.map((d) => [d.index, d]))
 
     // Masks reuse the same meshes many times, so look each one up once per frame.
@@ -109,6 +120,7 @@ export function createDrawer(
         if (last && sameFloats(last.positions, positions)) {
           mesh = last
         } else {
+          const start = stats ? now() : 0
           const { texCoords, indices } = staticDataOf(d, texture)
           const points: SkPoint[] = []
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
@@ -131,6 +143,10 @@ export function createDrawer(
             bounds: Skia.XYWHRect(minX, minY, maxX - minX, maxY - minY),
             shader,
             positions,
+          }
+          if (stats) {
+            stats.meshMs += now() - start
+            stats.meshesBuilt++
           }
         }
       }
@@ -161,6 +177,7 @@ export function createDrawer(
 
       // Draw into a layer, cut it with the union of the masks, then composite
       // the layer with the drawable's blend mode.
+      if (stats) stats.layers += 2
       layerPaint.setBlendMode(blendModeOf(d.constantFlags))
       canvas.saveLayer(layerPaint, mesh.bounds)
       paint.setAlphaf(d.opacity)
@@ -189,5 +206,59 @@ export function createDrawer(
     }
     lastMeshes = nextMeshes
     return picture
+  }
+}
+
+/** Raw JSI methods a native model has when rn-live2d is built with Skia (cpp/SkiaDrawer.cpp). */
+interface NativeDrawing {
+  setTextures(shaders: SkShader[], sizes: number[]): void
+  drawTo(canvas: SkCanvas, wantStats: boolean): DrawStats | undefined
+}
+
+function nativeDrawing(native: object): NativeDrawing | null {
+  'worklet'
+  const n = native as Partial<NativeDrawing>
+  return typeof n.drawTo === 'function' && typeof n.setTextures === 'function'
+    ? (n as NativeDrawing)
+    : null
+}
+
+/** Hands the textures to the native drawer, if there is one. Call once per model. */
+export function setNativeTextures(
+  native: object,
+  textures: SkImage[],
+  shaders: SkShader[]
+): void {
+  const drawing = nativeDrawing(native)
+  if (!drawing) return
+  drawing.setTextures(
+    shaders,
+    textures.flatMap((t) => [t.width(), t.height()])
+  )
+}
+
+/**
+ * Like createDrawer, but drawn in C++ straight from the model, without
+ * copying drawables to JS or building meshes through JSI. Null when rn-live2d
+ * isn't built with Skia (then use createDrawer).
+ */
+export function createNativeDrawer(
+  native: object,
+  { width, height }: CanvasInfo
+): ((stats?: DrawStats) => SkPicture) | null {
+  'worklet'
+  const drawing = nativeDrawing(native)
+  if (!drawing) return null
+  const bounds = Skia.XYWHRect(0, 0, width, height)
+  return (stats) => {
+    const recorder = Skia.PictureRecorder()
+    const canvas = recorder.beginRecording(bounds)
+    const s = drawing.drawTo(canvas, stats !== undefined)
+    if (stats && s) {
+      stats.meshMs += s.meshMs
+      stats.meshesBuilt += s.meshesBuilt
+      stats.layers += s.layers
+    }
+    return recorder.finishRecordingAsPicture()
   }
 }

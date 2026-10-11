@@ -10,7 +10,12 @@ import {
   type SkShader,
 } from 'react-native-skia'
 import { toCubismJson } from './cubismJson'
-import { createDrawer, type CanvasInfo } from './drawer'
+import {
+  createDrawer,
+  createNativeDrawer,
+  setNativeTextures,
+  type CanvasInfo,
+} from './drawer'
 import {
   isModelContext,
   sourceFromContext,
@@ -152,8 +157,10 @@ export async function loadLive2DModel(
     originY: native.originY,
     pixelsPerUnit: native.pixelsPerUnit,
   }
+  setNativeTextures(native, textures, shaders)
+  const nativeDraw = createNativeDrawer(native, canvas)
   const drawer = createDrawer(textures, shaders, canvas)
-  const draw = () => drawer(native.getDrawables())
+  const draw = nativeDraw ?? (() => drawer(native.getDrawables()))
   // Model pixels (y-down) to model units (y-up).
   const toUnits = (x: number, y: number) =>
     [

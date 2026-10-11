@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFrameCallback, useSharedValue } from 'react-native-reanimated'
 import { Group, Picture, Skia, type SkPicture } from 'react-native-skia'
 import {
@@ -8,7 +8,8 @@ import {
   scheduleOnRuntime,
   type WorkletRuntime,
 } from 'react-native-worklets'
-import { createDrawer } from './drawer'
+import { now } from './clock'
+import { createDrawer, createNativeDrawer, type DrawStats } from './drawer'
 import type { Live2DModel } from './loadModel'
 
 export interface Live2DProps {
@@ -20,15 +21,50 @@ export interface Live2DProps {
   scale?: number
   /** Stops animating and keeps the current frame. */
   paused?: boolean
+  /** Caps the frame rate, e.g. 30 to save battery. Default: the display's refresh rate. */
+  maxFps?: number
+  /** Called about once a second with timings of the animation loop. */
+  onFrameStats?: (stats: Live2DFrameStats) => void
+}
+
+/** Averages per frame over the last second, in milliseconds unless noted. */
+export interface Live2DFrameStats {
+  /** Frames drawn per second. */
+  fps: number
+  /** The frame rate the loop aims for: the display's refresh rate, or `maxFps`. */
+  targetFps: number
+  /** All work for a frame on the animation thread. */
+  workMs: number
+  /** Motions, physics and so on in C++ (`update`). */
+  updateMs: number
+  /** Copying vertex data out of C++ (`getDrawables`). */
+  drawablesMs: number
+  /** Recording the picture, including `meshMs`. */
+  drawMs: number
+  /** Building Skia vertices for drawables that moved. */
+  meshMs: number
+  /** Meshes rebuilt per frame (a count). */
+  meshesBuilt: number
+  /**
+   * Mask layers per frame (a count). Their cost is in the UI thread's Skia
+   * draw, which these stats don't cover.
+   */
+  layers: number
 }
 
 // Longest step per frame, so returning from the background doesn't jump motions and physics.
 const MAX_DELTA_SECONDS = 0.1
 // Frames kept alive after being replaced, in case the UI thread hasn't drawn them yet.
 const KEEP_FRAMES = 4
-// Target frame time. The background runtime's requestAnimationFrame polls every 16 ms
-// after the previous frame, which halves the frame rate, so pace with setTimeout instead.
-const FRAME_MS = 1000 / 60
+// Frame time until the display's refresh rate is known, and its limits. The background
+// runtime's requestAnimationFrame polls every 16 ms after the previous frame, which halves
+// the frame rate, so the loop paces itself with setTimeout instead.
+const DEFAULT_FRAME_MS = 1000 / 60
+const MIN_FRAME_MS = 1000 / 144
+const MAX_FRAME_MS = 1000 / 30
+// UI frames per estimate of the display's frame interval.
+const DISPLAY_SAMPLE_FRAMES = 60
+const STATS_INTERVAL_MS = 1000
 
 // Shown until the model loads. A recorder must begin recording before it can finish.
 const emptyRecorder = Skia.PictureRecorder()
@@ -49,6 +85,8 @@ export function Live2D({
   y = 0,
   scale = 1,
   paused = false,
+  maxFps,
+  onFrameStats,
 }: Live2DProps) {
   // A shared value lets Skia redraw each frame without a React re-render.
   const picture = useSharedValue<SkPicture>(model?.picture ?? EMPTY_PICTURE)
@@ -60,13 +98,36 @@ export function Live2D({
     createSynchronizable<{ frame: number; picture: SkPicture } | null>(null)
   )
   const shownFrame = useSharedValue(-1)
-  useFrameCallback(() => {
+  // The display's frame interval: the shortest over a window of UI frames, so
+  // dropped frames don't count. 0 until measured.
+  const [displayFrameMs] = useState(() => createSynchronizable(0))
+  const sampleMin = useSharedValue(Infinity)
+  const sampleCount = useSharedValue(0)
+  useFrameCallback(({ timeSincePreviousFrame }) => {
     const next = latest.getDirty()
     if (next && next.frame !== shownFrame.value) {
       shownFrame.value = next.frame
       picture.value = next.picture
     }
+    if (timeSincePreviousFrame !== null && timeSincePreviousFrame > 0) {
+      sampleMin.value = Math.min(sampleMin.value, timeSincePreviousFrame)
+      if (++sampleCount.value >= DISPLAY_SAMPLE_FRAMES) {
+        displayFrameMs.setBlocking(sampleMin.value)
+        sampleMin.value = Infinity
+        sampleCount.value = 0
+      }
+    }
   })
+
+  // A stable function for the loop to call, reading the latest prop.
+  const onFrameStatsRef = useRef(onFrameStats)
+  onFrameStatsRef.current = onFrameStats
+  const reportStats = useCallback(
+    (stats: Live2DFrameStats) => onFrameStatsRef.current?.(stats),
+    []
+  )
+  const wantStats = onFrameStats !== undefined
+  const capFrameMs = maxFps ? 1000 / maxFps : 0
 
   useEffect(() => {
     if (!model) return
@@ -82,7 +143,7 @@ export function Live2D({
     const running = createSynchronizable(true)
     scheduleOnRuntime(
       live2dRuntime(),
-      (native, textures, shaders, canvas, target, isRunning) => {
+      (native, textures, shaders, canvas, target, isRunning, displayMs, capMs, report) => {
         'worklet'
         // An uncaught error on this runtime aborts the app, so report and stop instead.
         const fail = (e: unknown) => {
@@ -90,27 +151,78 @@ export function Live2D({
           scheduleOnRN(reportError, String((e as Error)?.stack ?? e))
         }
         try {
-          const draw = createDrawer(textures, shaders, canvas)
+          // Drawn in C++ when rn-live2d is built with Skia, else in JS.
+          const nativeDraw = createNativeDrawer(native, canvas)
+          const draw = nativeDraw ? null : createDrawer(textures, shaders, canvas)
           // Frames drawn by this loop, newest last. Freed explicitly because the
           // GC doesn't see their native memory; the newest is never freed.
           const shown: SkPicture[] = []
           let last: number | null = null
           let frame = 0
+          const frameMs = () =>
+            Math.min(
+              MAX_FRAME_MS,
+              Math.max(MIN_FRAME_MS, capMs, displayMs.getDirty() || DEFAULT_FRAME_MS)
+            )
+
+          // Totals since the last stats report.
+          let statsStart = now()
+          let statsFrames = 0
+          let updateMs = 0
+          let drawablesMs = 0
+          let drawMs = 0
+          const drawStats: DrawStats = { meshMs: 0, meshesBuilt: 0, layers: 0 }
+
           const tick = () => {
             if (!isRunning.getDirty()) return
             try {
-              const now = Date.now()
+              const frameStart = now()
               const dt =
                 last === null
                   ? 0
-                  : Math.min((now - last) / 1000, MAX_DELTA_SECONDS)
-              last = now
+                  : Math.min((frameStart - last) / 1000, MAX_DELTA_SECONDS)
+              last = frameStart
               native.update(dt)
-              const next = draw(native.getDrawables())
+              const updated = report ? now() : 0
+              const stats = report ? drawStats : undefined
+              const drawables = draw ? native.getDrawables() : null
+              const copied = report ? now() : 0
+              const next = draw ? draw(drawables!, stats) : nativeDraw!(stats)
               target.setBlocking({ frame: ++frame, picture: next })
               shown.push(next)
               if (shown.length > KEEP_FRAMES) shown.shift()!.dispose()
-              setTimeout(tick, Math.max(0, FRAME_MS - (Date.now() - now)))
+              const end = now()
+
+              if (report) {
+                statsFrames++
+                updateMs += updated - frameStart
+                drawablesMs += copied - updated
+                drawMs += end - copied
+                const elapsed = end - statsStart
+                if (elapsed >= STATS_INTERVAL_MS) {
+                  const n = statsFrames
+                  scheduleOnRN(report, {
+                    fps: (n * 1000) / elapsed,
+                    targetFps: 1000 / frameMs(),
+                    workMs: (updateMs + drawablesMs + drawMs) / n,
+                    updateMs: updateMs / n,
+                    drawablesMs: drawablesMs / n,
+                    drawMs: drawMs / n,
+                    meshMs: drawStats.meshMs / n,
+                    meshesBuilt: drawStats.meshesBuilt / n,
+                    layers: drawStats.layers / n,
+                  })
+                  statsStart = end
+                  statsFrames = 0
+                  updateMs = 0
+                  drawablesMs = 0
+                  drawMs = 0
+                  drawStats.meshMs = 0
+                  drawStats.meshesBuilt = 0
+                  drawStats.layers = 0
+                }
+              }
+              setTimeout(tick, Math.max(0, frameMs() - (end - frameStart)))
             } catch (e) {
               fail(e)
             }
@@ -125,10 +237,23 @@ export function Live2D({
       model.shaders,
       model.canvas,
       latest,
-      running
+      running,
+      displayFrameMs,
+      capFrameMs,
+      wantStats ? reportStats : null
     )
     return () => running.setBlocking(false)
-  }, [model, paused, picture, latest, shownFrame])
+  }, [
+    model,
+    paused,
+    picture,
+    latest,
+    shownFrame,
+    displayFrameMs,
+    capFrameMs,
+    wantStats,
+    reportStats,
+  ])
 
   if (!model) return null
   return (
