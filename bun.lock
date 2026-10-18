@@ -40,7 +40,11 @@
     "packages/rn-live2d": {
       "name": "rn-live2d",
       "version": "0.1.0",
+      "bin": {
+        "rn-live2d": "cli/build/index.js",
+      },
       "devDependencies": {
+        "@types/node": "26.6.5",
         "@types/react": "19.2.0",
         "nitrogen": "^0.37.1",
         "react": "19.2.3",

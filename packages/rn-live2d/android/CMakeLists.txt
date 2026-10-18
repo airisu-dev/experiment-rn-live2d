@@ -8,27 +8,29 @@ set (CMAKE_CXX_STANDARD 20)
 # Enable Raw Props parsing in react-native (for Nitro Views)
 add_compile_options(-DRN_SERIALIZABLE_STATE=1)
 
-# Cubism Core is proprietary and user-supplied (see docs/gotchas.md#licensing).
-# Override with -DCUBISM_CORE_DIR=<path to SDK's Core folder>.
-if (NOT CUBISM_CORE_DIR)
-        set (CUBISM_CORE_DIR "${CMAKE_SOURCE_DIR}/../vendor/CubismSdkForNative/Core")
+# Cubism SDK for Native: proprietary, downloaded by each app. build.gradle
+# passes its folder (and checks its version), see app.plugin.js.
+if (NOT CUBISM_SDK_DIR)
+        message(FATAL_ERROR "[rn-live2d] CUBISM_SDK_DIR isn't set: build through Gradle, "
+                "with rnLive2d.cubismSdkPath set by the rn-live2d config plugin.")
 endif()
+
+# Cubism Core (closed source): the prebuilt static library.
+set (CUBISM_CORE_DIR "${CUBISM_SDK_DIR}/Core")
 set (CUBISM_CORE_LIB "${CUBISM_CORE_DIR}/lib/android/${ANDROID_ABI}/libLive2DCubismCore.a")
 if (NOT EXISTS "${CUBISM_CORE_LIB}")
-        message(FATAL_ERROR "Cubism Core not found for ${ANDROID_ABI} at ${CUBISM_CORE_LIB}. "
-                "Download Cubism SDK for Native and extract it to packages/rn-live2d/vendor/CubismSdkForNative.")
+        message(FATAL_ERROR "[rn-live2d] Cubism Core not found for ${ANDROID_ABI} at ${CUBISM_CORE_LIB}.")
 endif()
 add_library(Live2DCubismCore STATIC IMPORTED)
 set_target_properties(Live2DCubismCore PROPERTIES IMPORTED_LOCATION "${CUBISM_CORE_LIB}")
 
-# Cubism Native Framework (motions, physics, pose, ...): the git submodule in
-# ../third_party, pinned to the tag matching the Core version.
+# Cubism Native Framework (motions, physics, pose, ...): the source in the same
+# SDK, so it always matches the Core.
 # Its Rendering/<backend> folders are left out: we draw with Skia
 # (see ../cpp/CubismRendererStub.cpp).
-set (CUBISM_FRAMEWORK_DIR "${CMAKE_SOURCE_DIR}/../third_party/CubismNativeFramework/src")
+set (CUBISM_FRAMEWORK_DIR "${CUBISM_SDK_DIR}/Framework/src")
 if (NOT EXISTS "${CUBISM_FRAMEWORK_DIR}/CubismFramework.cpp")
-        message(FATAL_ERROR "Cubism Native Framework not found at ${CUBISM_FRAMEWORK_DIR}. "
-                "Run `git submodule update --init`.")
+        message(FATAL_ERROR "[rn-live2d] Cubism Native Framework not found at ${CUBISM_FRAMEWORK_DIR}.")
 endif()
 file(GLOB_RECURSE CUBISM_FRAMEWORK_SOURCES "${CUBISM_FRAMEWORK_DIR}/*.cpp")
 list(FILTER CUBISM_FRAMEWORK_SOURCES EXCLUDE REGEX "/Rendering/[^/]+/")

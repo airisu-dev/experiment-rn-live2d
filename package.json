@@ -39,9 +39,10 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint src packages/rn-live2d/src",
+    "lint": "expo lint src packages/rn-live2d/src packages/rn-live2d/plugin/src packages/rn-live2d/cli/src",
     "codegen": "bun --cwd packages/rn-live2d codegen",
-    "fetch:cubism": "bash scripts/fetch-cubism-sdk.sh"
+    "fetch:cubism": "bash scripts/fetch-cubism-sdk.sh",
+    "postinstall": "tsc -b packages/rn-live2d/plugin packages/rn-live2d/cli"
   },
   "private": true,
   "workspaces": [

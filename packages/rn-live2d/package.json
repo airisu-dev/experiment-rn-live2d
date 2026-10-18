@@ -6,11 +6,16 @@
   "types": "src/index",
   "react-native": "src/index",
   "source": "src/index",
+  "bin": {
+    "rn-live2d": "cli/build/index.js"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "clean": "git clean -dfX",
-    "build": "bun run typecheck && bob build",
-    "codegen": "nitrogen --logLevel=debug"
+    "build": "bun run typecheck && bob build && tsc -b plugin cli",
+    "codegen": "nitrogen --logLevel=debug",
+    "build:node": "tsc -b plugin cli",
+    "prepack": "tsc -b plugin cli"
   },
   "keywords": [
     "react-native",
@@ -34,6 +39,8 @@
     "ios/**/*.cpp",
     "ios/**/*.swift",
     "app.plugin.js",
+    "plugin/build",
+    "cli/build",
     "*.podspec",
     "README.md"
   ],
@@ -47,6 +54,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
+    "@types/node": "26.6.5",
     "@types/react": "19.2.0",
     "nitrogen": "^0.37.1",
     "react": "19.2.3",
@@ -114,5 +122,9 @@
         }
       ]
     ]
+  },
+  "cubismSdk": {
+    "version": "5-r.5",
+    "sha256": "7ff3a4bbc19c0a8728965aa522ab77eb11b252916453e68a8a78d3b71188bb12"
   }
 }

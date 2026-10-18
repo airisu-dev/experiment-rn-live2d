@@ -42,5 +42,8 @@ example
 /ios
 /android
 
+# Cubism SDK for Native (proprietary; downloaded by scripts/fetch-cubism-sdk.sh)
+/vendor/
+
 # Live2D sample models (Live2D Free Material License; not redistributed)
 /assets/live2d/

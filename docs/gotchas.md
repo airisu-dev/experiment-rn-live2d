@@ -1,9 +1,16 @@
 # Gotchas
 
 ## Licensing
-Cubism Core is proprietary. It most likely **cannot be bundled** in the npm package. `pixi-live2d-display` handles this by making users supply the Core themselves. Plan for an **Expo config plugin or postinstall step** that points to a Core the user downloads. Read the Live2D license terms carefully before publishing.
+Cubism Core is under the Live2D Proprietary Software License, which allows redistributing it only inside a finished app for its end users, not in a package for other developers. So **neither the npm package nor this repo contains any of the SDK**, the same as `pixi-live2d-display`. Each app downloads Cubism SDK for Native from Live2D itself, accepting the license, and points the package at it:
 
-The **Cubism Native Framework** is open source and on GitHub, so it is a git submodule at `packages/rn-live2d/third_party/CubismNativeFramework`. The repo only stores the link and the pinned commit, never the files. The **Core** and the sample models are not on GitHub: they only ship in the SDK download, which `scripts/fetch-cubism-sdk.sh` puts in the gitignored `packages/rn-live2d/vendor/CubismSdkForNative/`. **Keep the two on the same version:** the submodule's tag (`5-r.5`) must match `VERSION` in the fetch script. To upgrade, check out the new tag in the submodule and update `VERSION` and `SHA256` together.
+- `rn-live2d fetch-sdk --accept-license [--out <dir>]` (`cli/src`, run through any package manager: `npx`, `bunx`, …) downloads the official zip and checks its SHA-256. On EAS Build, run it in an `eas-build-post-install` script.
+- The config plugin (`plugin/src`, loaded by `app.plugin.js`, option `cubismSdkPath`, relative to the app's root) writes the folder into `android/gradle.properties` and `ios/Podfile.properties.json` as `rnLive2d.cubismSdkPath`, relative to the native folder. The environment variable `RN_LIVE2D_CUBISM_SDK` overrides it. Only Expo apps (prebuild) are supported.
+- `android/build.gradle` and `RnLive2d.podspec` read it, check the SDK's `cubism-info.yml` version against `cubismSdk.version` in the package's `package.json` (another major version fails, another release warns), and build the **Core** and the **Cubism Native Framework** source from that one folder, so the two always match.
+- iOS: CocoaPods only compiles files inside the pod, so at `pod install` the podspec copies the Framework source into the gitignored `cubism-sdk/` and packages the Core's static libraries as an xcframework there (`lipo`, `xcodebuild -create-xcframework`). It's redone when the SDK's folder or version changes.
+
+Apps built on the SDK by businesses above 10M JPY annual revenue also need Live2D's Cubism SDK Release License. To upgrade the SDK, update `cubismSdk.version` and `sha256` together.
+
+The plugin and the CLI are TypeScript, built to `plugin/build` and `cli/build` (`tsc -b plugin cli`, gitignored). The repo's `postinstall` builds them, and so does `prepack` before publishing: Expo CLI only loads `app.plugin.js`, and Node won't run TypeScript from `node_modules`.
 
 ## Assets
 `model3.json` references `.moc3`, textures, motions and physics files by relative path.

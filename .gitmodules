@@ -1,3 +1,0 @@
-[submodule "packages/rn-live2d/third_party/CubismNativeFramework"]
-	path = packages/rn-live2d/third_party/CubismNativeFramework
-	url = https://github.com/Live2D/CubismNativeFramework.git
