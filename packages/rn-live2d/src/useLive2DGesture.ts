@@ -12,7 +12,8 @@ export interface Live2DGestureTarget {
   /**
    * Called with the hit areas under a tap, e.g. `['Head']`. Return true to skip
    * the default reaction: play a random motion of group `Tap<area>` (e.g.
-   * `TapBody`), or for `Head` without one, a random expression.
+   * `TapBody`), or for `Head` without one, a random expression; failing those,
+   * a random motion of group `Tap`.
    */
   onHit?: (hitAreas: string[]) => boolean | void
   /**
@@ -44,6 +45,8 @@ function react(model: Live2DModel, hitAreas: string[]) {
       return
     }
   }
+  // Some models have one `Tap` group for every area.
+  if (model.motionGroups.includes('Tap')) model.motion('Tap')
 }
 
 // How long a press must last to pick up a draggable model.

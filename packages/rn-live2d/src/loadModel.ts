@@ -21,6 +21,13 @@ import {
   sourceFromContext,
   type Live2DModelContext,
 } from './modelContext'
+import {
+  fetchBytes,
+  isRemote,
+  redactUrl,
+  sourceFromUrl,
+  type Live2DLoadOptions,
+} from './modelUrl'
 import { RnLive2d } from './native'
 import type {
   MotionPriority,
@@ -94,7 +101,16 @@ export interface Live2DModel {
   canvas: CanvasInfo
 }
 
-async function readAsset(source: AssetSource): Promise<ArrayBuffer> {
+// For error messages: URLs lose their query, which can hold tokens.
+const describe = (source: AssetSource) =>
+  typeof source === 'string' ? redactUrl(source) : String(source)
+
+async function readAsset(
+  source: AssetSource,
+  options: Live2DLoadOptions
+): Promise<ArrayBuffer> {
+  // Remote files are fetched directly: expo-asset can't send headers.
+  if (isRemote(source)) return fetchBytes(source, options)
   const asset = Asset.fromModule(source)
   // Android release builds embed images as drawables, and expo-asset marks them
   // downloaded with a bare resource name (enough for <Image>), which isn't a file.
@@ -105,30 +121,43 @@ async function readAsset(source: AssetSource): Promise<ArrayBuffer> {
   }
   await asset.downloadAsync()
   if (!asset.localUri) {
-    throw new Error(`Live2D: failed to download asset ${String(source)}`)
+    throw new Error(`Live2D: failed to download asset ${describe(source)}`)
   }
   return new File(asset.localUri).arrayBuffer()
 }
 
-async function loadTexture(source: AssetSource): Promise<SkImage> {
-  const bytes = new Uint8Array(await readAsset(source))
+async function loadTexture(
+  source: AssetSource,
+  options: Live2DLoadOptions
+): Promise<SkImage> {
+  const bytes = new Uint8Array(await readAsset(source, options))
   const image = Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(bytes))
   if (!image) {
-    throw new Error(`Live2D: failed to decode texture ${String(source)}`)
+    throw new Error(`Live2D: failed to decode texture ${describe(source)}`)
   }
   return image
 }
 
-/** Loads a model from its files, or from a `require.context` of its folder. */
 let nextModelId = 1
 
+/**
+ * Loads a model from its files, from a `require.context` of its folder, or
+ * from the URL of its `model3.json` (the files it lists are fetched next to it).
+ * `options` apply to every remote file.
+ */
 export async function loadLive2DModel(
-  input: Live2DModelSource | Live2DModelContext
+  input: Live2DModelSource | Live2DModelContext | string,
+  options: Live2DLoadOptions = {}
 ): Promise<Live2DModel> {
-  const source = isModelContext(input) ? sourceFromContext(input) : input
+  const source =
+    typeof input === 'string'
+      ? await sourceFromUrl(input, options)
+      : isModelContext(input)
+        ? sourceFromContext(input)
+        : input
   const [moc, textures] = await Promise.all([
-    readAsset(source.moc),
-    Promise.all(source.textures.map(loadTexture)),
+    readAsset(source.moc, options),
+    Promise.all(source.textures.map((t) => loadTexture(t, options))),
   ])
   const native = RnLive2d.loadModel(moc, toCubismJson(source.settings))
   if (source.physics) native.loadPhysics(toCubismJson(source.physics))

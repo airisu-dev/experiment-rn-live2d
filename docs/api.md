@@ -3,7 +3,9 @@
 ```tsx
 // A require.context of the model's folder: the files its model3.json lists are
 // loaded from it. Or pass the files yourself as a Live2DModelSource.
-const model = useLive2DModel(require.context('./Mao', true, /\.(json|moc3|png)$/));
+const { model, error, loading, retry } = useLive2DModel(
+  require.context('./Mao', true, /\.(json|moc3|png)$/)
+);
 const gesture = useLive2DGesture(model, { x, y, scale });
 
 <GestureDetector gesture={gesture}>
@@ -14,6 +16,56 @@ const gesture = useLive2DGesture(model, { x, y, scale });
 ```
 
 The app needs a `GestureHandlerRootView` at its root.
+
+`useLive2DModel` loads once on mount and doesn't throw. It returns:
+- **`model`:** the loaded model, `null` while loading or after an error.
+- **`error`:** why the last load failed.
+- **`loading`:** true while a load is in progress.
+- **`retry()`:** loads again.
+
+The source is read once, so remount the component to switch models.
+
+## Loading from a URL
+
+```tsx
+const { model, error, retry } = useLive2DModel('https://example.com/haru/haru_greeter_t03.model3.json');
+```
+
+A string is the URL of a `model3.json`. The files it lists are resolved
+relative to it, and spaces in file names are escaped.
+
+- **Every file** (JSON, moc, textures) is fetched in parallel with
+  `expo/fetch`. The only caching is the platform's HTTP cache, so a persistent
+  offline copy is up to the app.
+- **Motion sounds** are ignored.
+- **Errors:** a failed fetch ends up in `error` as `Live2D: failed to fetch
+  <url> (<status>)`. Network errors (e.g. offline) come through the same way;
+  `retry()` tries again. URLs in error messages never include their query, so
+  tokens don't leak into the UI or logs.
+
+### Protected models
+
+```tsx
+// 1. A token in the query: reused for every file on the same host.
+useLive2DModel('https://cdn.example.com/haru/haru.model3.json?token=abc');
+
+// 2. Headers: sent with every request.
+useLive2DModel(url, { headers: { Authorization: `Bearer ${token}` } });
+
+// 3. A signature per file (e.g. S3 presigned URLs): sign each one yourself.
+useLive2DModel(signedModel3Url, {
+  resolveUrl: (url, file) => api.sign(url), // may return a promise
+});
+```
+
+- **`resolveUrl(url, file)`:** `url` is the file resolved next to the
+  `model3.json`, without a query, and `file` is the path as listed. When it's
+  given, the `model3.json`'s query isn't copied.
+- **Options are read once**, like the source, and `retry()` reuses them. To
+  load with a fresh token, remount (e.g. change the component's `key`).
+  `resolveUrl` itself runs on every load, so it can fetch fresh signatures.
+- **Cubism 2 models** (`model.json`, `.moc`) can't be loaded: Cubism Core 5
+  only reads `.moc3`.
 
 ## Several models in one canvas
 
@@ -65,7 +117,7 @@ background thread: the native model is locked.
 
 | Prop | Description |
 | --- | --- |
-| `model` | Model from `useLive2DModel` |
+| `model` | `model` from `useLive2DModel` |
 | `x`, `y` | Position on canvas |
 | `scale` | Uniform scale |
 | `paused` | Stops animating, keeps the current frame |
@@ -84,9 +136,9 @@ inside the canvas. List targets in drawing order.
 
 | Target field | Description |
 | --- | --- |
-| `model` | Model from `useLive2DModel` |
+| `model` | `model` from `useLive2DModel` |
 | `x`, `y`, `scale` | Same as its `<Live2D>` props, to map touches to the model |
-| `onHit(hitAreas)` | Called on a tap on its hit areas. Return `true` to skip the default: a random `Tap<Area>` motion (e.g. `TapBody`), or a random expression for `Head` without one, like the SDK sample |
+| `onHit(hitAreas)` | Called on a tap on its hit areas. Return `true` to skip the default: a random `Tap<Area>` motion (e.g. `TapBody`), or a random expression for `Head` without one, like the SDK sample; failing those, a random `Tap` motion (models with one tap group) |
 | `onMove(x, y)` | Makes it draggable. Called with its new top-left position as the finger moves, keeping the point where it was grabbed; the app moves it |
 
 | Option | Description |

@@ -10,7 +10,7 @@ export interface Live2DModelContext {
   (id: string): unknown
 }
 
-interface Model3Json {
+export interface Model3Json {
   FileReferences?: {
     Moc?: string
     Textures?: string[]
@@ -27,9 +27,12 @@ export function isModelContext(
   return typeof source === 'function'
 }
 
-// Resolves `file` relative to the folder of context key `from` ('./a/b.json').
-function join(from: string, file: string): string {
-  const parts = from.split('/').slice(0, -1)
+/**
+ * Resolves `file` relative to the folder of `from`: a context key
+ * ('./a/b.json') or a URL ('https://host/a/b.json?v=1').
+ */
+export function resolvePath(from: string, file: string): string {
+  const parts = from.replace(/[?#].*$/, '').split('/').slice(0, -1)
   for (const part of file.split('/')) {
     if (part === '..') parts.pop()
     else if (part !== '.' && part !== '') parts.push(part)
@@ -53,7 +56,7 @@ export function sourceFromContext(context: Live2DModelContext): Live2DModelSourc
   const refs = settings.FileReferences ?? {}
 
   const load = <T>(file: string): T => {
-    const key = join(model3Key, file)
+    const key = resolvePath(model3Key, file)
     if (!keys.includes(key)) {
       throw new Error(
         `Live2D: ${file} (listed in ${model3Key}) isn't in the require.context. Check its filter.`
