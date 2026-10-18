@@ -79,3 +79,10 @@ tsconfig.tsbuildinfo
 
 # Cubism SDK for Native (proprietary Core; user-supplied)
 vendor/
+
+# Cubism SDK copied in by RnLive2d.podspec at pod install (proprietary, never published)
+cubism-sdk/
+
+# Built config plugin and CLI (tsc -b plugin cli)
+plugin/build/
+cli/build/

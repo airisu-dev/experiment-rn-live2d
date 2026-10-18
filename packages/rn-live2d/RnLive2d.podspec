@@ -2,19 +2,67 @@ require "json"
 
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 
-# Cubism Core is proprietary and user-supplied (see docs/gotchas.md#licensing).
-# scripts/fetch-cubism-sdk.sh downloads the SDK and builds the xcframework on macOS.
-cubism_core_dir = File.join(__dir__, "vendor", "CubismSdkForNative", "Core")
-unless File.directory?(File.join(cubism_core_dir, "Live2DCubismCore.xcframework"))
-  raise "[RnLive2d] Cubism Core xcframework not found in #{cubism_core_dir}. " \
-        "Run `bun run fetch:cubism` on macOS first."
+# Cubism SDK for Native: proprietary, so each app downloads it from Live2D and
+# sets its folder (app.plugin.js writes rnLive2d.cubismSdkPath to
+# Podfile.properties.json, relative to ios/).
+ios_dir = Pod::Config.instance.installation_root.to_s
+podfile_properties_path = File.join(ios_dir, "Podfile.properties.json")
+podfile_properties = File.exist?(podfile_properties_path) ? JSON.parse(File.read(podfile_properties_path)) : {}
+configured_sdk_dir = ENV["RN_LIVE2D_CUBISM_SDK"] || podfile_properties["rnLive2d.cubismSdkPath"]
+unless configured_sdk_dir
+  raise "[rn-live2d] Cubism SDK for Native isn't configured. Add the plugin to app.json: " \
+        "[\"rn-live2d\", { \"cubismSdkPath\": \"./vendor/CubismSdkForNative\" }], download the SDK with " \
+        "`rn-live2d fetch-sdk --accept-license` (through npx, bunx, yarn or pnpm), then prebuild."
+end
+cubism_sdk_dir = File.expand_path(configured_sdk_dir, ios_dir)
+cubism_info = File.join(cubism_sdk_dir, "cubism-info.yml")
+unless File.file?(cubism_info)
+  raise "[rn-live2d] Cubism SDK for Native not found at #{cubism_sdk_dir} (no cubism-info.yml). " \
+        "Download it with `rn-live2d fetch-sdk --accept-license` (through npx, bunx, yarn or pnpm)."
+end
+cubism_version = File.read(cubism_info)[/^version:\s*(\S+)/, 1] || "unknown"
+supported_version = package["cubismSdk"]["version"]
+if cubism_version.split("-").first != supported_version.split("-").first
+  raise "[rn-live2d] Cubism SDK for Native #{cubism_version} at #{cubism_sdk_dir} isn't supported: use #{supported_version}."
+end
+if cubism_version != supported_version
+  Pod::UI.warn "[rn-live2d] Cubism SDK for Native #{cubism_version} found, tested with #{supported_version}."
 end
 
-# Cubism Native Framework: git submodule, pinned to the tag matching the Core version.
-cubism_framework_dir = File.join(__dir__, "third_party", "CubismNativeFramework", "src")
-unless File.file?(File.join(cubism_framework_dir, "CubismFramework.cpp"))
-  raise "[RnLive2d] Cubism Native Framework not found in #{cubism_framework_dir}. " \
-        "Run `git submodule update --init`."
+# CocoaPods only compiles files inside the pod, and the SDK ships one Core static
+# library per slice. So copy the Framework source in, and package the Core
+# slices as an xcframework (CocoaPods then links the right one for device or
+# simulator). Redone when the SDK's folder or version changes. Gitignored, not published.
+cubism_stage_dir = File.join(__dir__, "cubism-sdk")
+cubism_stamp = "#{cubism_sdk_dir}\n#{cubism_version}\n"
+cubism_stamp_path = File.join(cubism_stage_dir, ".stamp")
+unless File.exist?(cubism_stamp_path) && File.read(cubism_stamp_path) == cubism_stamp
+  require "fileutils"
+  require "tmpdir"
+  FileUtils.rm_rf(cubism_stage_dir)
+  FileUtils.mkdir_p(cubism_stage_dir)
+  FileUtils.cp_r(File.join(cubism_sdk_dir, "Framework", "src"), File.join(cubism_stage_dir, "Framework"))
+  core = File.join(cubism_sdk_dir, "Core")
+  FileUtils.mkdir_p(File.join(cubism_stage_dir, "Core"))
+  FileUtils.cp_r(File.join(core, "include"), File.join(cubism_stage_dir, "Core", "include"))
+  lib = File.join(core, "lib", "ios")
+  Dir.mktmpdir do |tmp|
+    simulator_lib = File.join(tmp, "libLive2DCubismCore.a")
+    run = lambda do |*cmd|
+      system(*cmd) or raise "[rn-live2d] Failed to package Cubism Core: #{cmd.join(' ')}"
+    end
+    run.call("lipo", "-create",
+             File.join(lib, "Release-iphonesimulator-arm64", "libLive2DCubismCore.a"),
+             File.join(lib, "Release-iphonesimulator-x86_64", "libLive2DCubismCore.a"),
+             "-output", simulator_lib)
+    run.call("xcodebuild", "-create-xcframework",
+             "-library", File.join(lib, "Release-iphoneos", "libLive2DCubismCore.a"),
+             "-headers", File.join(core, "include"),
+             "-library", simulator_lib, "-headers", File.join(core, "include"),
+             "-output", File.join(cubism_stage_dir, "Live2DCubismCore.xcframework"))
+  end
+  File.write(cubism_stamp_path, cubism_stamp)
+  Pod::UI.puts "[rn-live2d] Using Cubism SDK for Native #{cubism_version} from #{cubism_sdk_dir}"
 end
 
 # Draw in C++ onto react-native-skia canvases (cpp/SkiaDrawer.cpp). Skia is
@@ -44,17 +92,17 @@ Pod::Spec.new do |s|
     # Implementation (C++ objects)
     "cpp/**/*.{hpp,cpp}",
     # Cubism Native Framework (motions, physics, pose, ...)
-    "third_party/CubismNativeFramework/src/**/*.{hpp,cpp}",
+    "cubism-sdk/Framework/**/*.{hpp,cpp}",
   ]
   # Its Rendering/<backend> folders are left out: we draw with Skia
   # (see cpp/CubismRendererStub.cpp).
-  s.exclude_files = "third_party/CubismNativeFramework/src/Rendering/*/**/*"
+  s.exclude_files = "cubism-sdk/Framework/Rendering/*/**/*"
 
-  s.vendored_frameworks = "vendor/CubismSdkForNative/Core/Live2DCubismCore.xcframework"
+  s.vendored_frameworks = "cubism-sdk/Live2DCubismCore.xcframework"
   # Set before add_nitrogen_files, which merges its own settings into this.
   header_search_paths = [
-    "\"$(PODS_TARGET_SRCROOT)/vendor/CubismSdkForNative/Core/include\"",
-    "\"$(PODS_TARGET_SRCROOT)/third_party/CubismNativeFramework/src\"",
+    "\"$(PODS_TARGET_SRCROOT)/cubism-sdk/Core/include\"",
+    "\"$(PODS_TARGET_SRCROOT)/cubism-sdk/Framework\"",
   ]
   preprocessor_definitions = ["$(inherited)"]
   if rn_skia_dir

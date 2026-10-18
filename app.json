@@ -55,7 +55,13 @@
           }
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "rn-live2d",
+        {
+          "cubismSdkPath": "./vendor/CubismSdkForNative"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

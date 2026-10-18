@@ -27,6 +27,32 @@ if (isNewArchitectureEnabled()) {
   apply plugin: "com.facebook.react"
 }
 
+// Cubism SDK for Native: proprietary, so each app downloads it from Live2D and
+// sets its folder (app.plugin.js writes rnLive2d.cubismSdkPath, relative to android/).
+def cubismSdkDir() {
+  def configured = System.getenv("RN_LIVE2D_CUBISM_SDK") ?: rootProject.findProperty("rnLive2d.cubismSdkPath")
+  if (!configured) {
+    throw new GradleException("[rn-live2d] Cubism SDK for Native isn't configured. Add the plugin to app.json: " +
+      "[\"rn-live2d\", { \"cubismSdkPath\": \"./vendor/CubismSdkForNative\" }], download the SDK with `rn-live2d fetch-sdk --accept-license` (through npx, bunx, yarn or pnpm), then prebuild.")
+  }
+  def dir = rootProject.file(configured)
+  def info = new File(dir, "cubism-info.yml")
+  if (!info.exists()) {
+    throw new GradleException("[rn-live2d] Cubism SDK for Native not found at ${dir} (no cubism-info.yml). " +
+      "Download it with `rn-live2d fetch-sdk --accept-license` (through npx, bunx, yarn or pnpm).")
+  }
+  def matcher = info.text =~ /(?m)^version:\s*(\S+)/
+  def version = matcher.find() ? matcher.group(1) : "unknown"
+  def supported = new groovy.json.JsonSlurper().parse(file("../package.json")).cubismSdk.version
+  if (version.tokenize("-")[0] != supported.tokenize("-")[0]) {
+    throw new GradleException("[rn-live2d] Cubism SDK for Native ${version} at ${dir} isn't supported: use ${supported}.")
+  }
+  if (version != supported) {
+    logger.warn("[rn-live2d] Cubism SDK for Native ${version} found, tested with ${supported}.")
+  }
+  return dir.absolutePath.replace("\\", "/")
+}
+
 def getExtOrDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["RnLive2d_" + name]
 }
@@ -49,7 +75,8 @@ android {
     externalNativeBuild {
       cmake {
         cppFlags "-frtti -fexceptions -Wall -Wextra -fstack-protector-all"
-        arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+        arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+          "-DCUBISM_SDK_DIR=${cubismSdkDir()}"
         abiFilters (*reactNativeArchitectures())
 
         buildTypes {

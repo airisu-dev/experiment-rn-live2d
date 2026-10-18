@@ -73,8 +73,6 @@ jobs:
           # expo-updates derives a runtime version from the git history in some
           # configurations, so a shallow clone can change the built artifact.
           fetch-depth: 0
-          # The Cubism Native Framework is a submodule (packages/rn-live2d/third_party).
-          submodules: true
 
       - name: Read eas.json
         shell: bash
@@ -85,18 +83,6 @@ jobs:
             exit 1
           fi
           echo "Building profile '${{ inputs.profile }}' from eas.json"
-
-      # Cubism Core and the sample models are proprietary and gitignored, so the
-      # checkout doesn't have them. Fetch them from Live2D before prebuild.
-      - name: Restore Cubism SDK cache
-        uses: actions/cache@v4
-        with:
-          path: packages/rn-live2d/vendor/CubismSdkForNative-*.zip
-          key: cubism-sdk-${{ hashFiles('scripts/fetch-cubism-sdk.sh') }}
-
-      - name: Fetch Cubism SDK
-        shell: bash
-        run: bash scripts/fetch-cubism-sdk.sh
 
       - name: Export build environment
         shell: bash
@@ -145,6 +131,20 @@ jobs:
             yarn) yarn install --immutable ;;
             *)    npm ci ;;
           esac
+
+      # Cubism SDK for Native (Core and Framework) and the sample models are
+      # proprietary and gitignored, so the checkout doesn't have them. Fetch them
+      # from Live2D before prebuild (app.json's cubismSdkPath points at them), after
+      # installing: the fetch CLI is TypeScript, built by the postinstall.
+      - name: Restore Cubism SDK cache
+        uses: actions/cache@v4
+        with:
+          path: vendor/CubismSdkForNative-*.zip
+          key: cubism-sdk-${{ hashFiles('scripts/fetch-cubism-sdk.sh', 'packages/rn-live2d/package.json') }}
+
+      - name: Fetch Cubism SDK
+        shell: bash
+        run: bash scripts/fetch-cubism-sdk.sh
 
       - name: Set up JDK
         if: inputs.platform == 'android'
