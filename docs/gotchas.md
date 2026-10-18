@@ -29,3 +29,16 @@ The Cubism Native Framework parses its JSON files (model3, physics3, pose3, moti
 ## Android release assets
 
 In Android release builds, assets are embedded in the APK. For images, `expo-asset` skips the download and sets `localUri` to a bare drawable name (enough for `<Image>`), which `expo-file-system` rejects ("URI is not absolute"). `readAsset` in `loadModel.ts` clears that and calls `downloadAsync()`, which copies the resource into the cache. Debug builds never hit this: Metro serves assets over HTTP. Always check a release build before calling a loading change done.
+
+## Worklet captures
+
+A worklet copies everything it captures to its runtime. Capturing `globalThis` (even through a module constant) fails with "Trying to convert a cyclic object to a serializable". Reference `globalThis` inside the worklet body instead (see `src/clock.ts`).
+
+## React Compiler and gesture callbacks
+
+The React Compiler is on, and it compiles the workspace package too. A `let` reassigned in one gesture callback and read in another (both made in the same `useMemo`) wasn't seen by the other callback: the long-press drag set it in `onStart`, and `onUpdate` still read `null`. Keep such state on a mutable object (`{ current }`) or a ref (see `useLive2DGesture.ts`).
+
+## Gesture handler events
+
+- `Pan().activateAfterLongPress`: `onBegin` doesn't run before `onStart` the way you'd expect, so don't save the press position in `onBegin` for `onStart`. Read it from `onStart`'s own event; the finger has barely moved by then.
+- Combining separate per-model gestures with `Gesture.Simultaneous` doesn't make their inner gestures simultaneous with each other. Use one gesture for all models (`useLive2DGestures`).
