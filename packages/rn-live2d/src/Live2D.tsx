@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useFrameCallback, useSharedValue } from 'react-native-reanimated'
 import { Group, Picture, Skia, type SkPicture } from 'react-native-skia'
 import {
@@ -84,8 +90,11 @@ export function Live2D({
   })
 
   // A stable function for the loop to call, reading the latest prop.
+  // Updated after render, not during it: refs mustn't be written while rendering.
   const onFrameStatsRef = useRef(onFrameStats)
-  onFrameStatsRef.current = onFrameStats
+  useLayoutEffect(() => {
+    onFrameStatsRef.current = onFrameStats
+  })
   const reportStats = useCallback(
     (stats: Live2DFrameStats) => onFrameStatsRef.current?.(stats),
     []
@@ -97,13 +106,14 @@ export function Live2D({
     if (!model) return
     if (shownModel.current !== model) {
       shownModel.current = model
-      picture.value = model.picture
+      // set(), not `.value =`, outside worklets: the React Compiler form.
+      picture.set(model.picture)
     }
     if (paused) return
 
     // Frame numbers restart when the model starts animating again.
     latest.setBlocking(null)
-    shownFrame.value = -1
+    shownFrame.set(-1)
     const running = createSynchronizable(true)
     scheduleOnRuntime(
       live2dRuntime(),

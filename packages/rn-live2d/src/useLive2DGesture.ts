@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { Gesture } from 'react-native-gesture-handler'
 import type { Live2DModel } from './loadModel'
 
@@ -76,10 +76,21 @@ export function useLive2DGestures(
   targets: Live2DGestureTarget[],
   { focus = true }: Live2DGesturesOptions = {}
 ) {
-  // Read at event time, so the gesture is built once and targets can change freely.
-  const latest = useRef(targets)
-  latest.current = targets
+  // Out of the React Compiler: the gesture callbacks are event handlers that
+  // share refs, and it did miscompile them (a `let` shared between callbacks).
+  'use no memo'
 
+  // Read at event time, so the gesture is built once and targets can change freely.
+  // Updated after render, not during it.
+  const latest = useRef(targets)
+  useLayoutEffect(() => {
+    latest.current = targets
+  })
+
+  // The callbacks below only run on touch events, after render. The refs rule
+  // can't tell that through RNGH's builder API (`.onStart(cb)` looks like a call
+  // that may run `cb` during render), so it's off for this block only.
+  /* eslint-disable react-hooks/refs */
   return useMemo(() => {
     const focusAll = (px: number, py: number) => {
       for (const t of latest.current) t.model?.focus(...toModel(t, px, py))
@@ -109,7 +120,7 @@ export function useLive2DGestures(
 
     // The model being dragged (found again by model, as targets can change),
     // and where the finger holds it relative to its top-left corner. Kept on an
-    // object: the React Compiler doesn't carry a reassigned `let` across these callbacks.
+    // object, which stays correct even if this hook is compiled again.
     const drag: {
       current: { model: Live2DModel; dx: number; dy: number } | null
     } = { current: null }
@@ -134,6 +145,7 @@ export function useLive2DGestures(
 
     return Gesture.Simultaneous(pan, tap, dragPan)
   }, [focus])
+  /* eslint-enable react-hooks/refs */
 }
 
 /**

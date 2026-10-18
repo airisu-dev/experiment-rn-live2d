@@ -1,23 +1,9 @@
+import { MODEL_NAMES, MODELS, type ModelName } from '@/live2dModels';
 import { useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutChangeEvent,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  BlurMask,
-  Canvas,
-  Circle,
-  LinearGradient,
-  Oval,
-  Rect,
-  RoundedRect,
-  vec,
-} from 'react-native-skia';
+import { BlurMask, Canvas, Circle, LinearGradient, Oval, Rect, RoundedRect, vec } from 'react-native-skia';
 import {
   Live2D,
   useLive2DGesture,
@@ -27,7 +13,6 @@ import {
   type Live2DModel,
   type Live2DModelContext,
 } from 'rn-live2d';
-import { MODEL_NAMES, MODELS, type ModelName } from '@/live2dModels';
 
 // Each sample alone, or all of them side by side in one canvas.
 type Choice = ModelName | 'All';
@@ -40,34 +25,19 @@ export default function Home() {
     <SafeAreaView style={styles.container}>
       <View style={styles.switcher}>
         {CHOICES.map((n) => (
-          <Pressable
-            key={n}
-            onPress={() => setName(n)}
-            style={[styles.option, n === name && styles.optionActive]}
-          >
-            <Text
-              style={[styles.optionText, n === name && styles.optionTextActive]}
-            >
-              {n}
-            </Text>
+          <Pressable key={n} onPress={() => setName(n)} style={[styles.option, n === name && styles.optionActive]}>
+            <Text style={[styles.optionText, n === name && styles.optionTextActive]}>{n}</Text>
           </Pressable>
         ))}
       </View>
       {/* useLive2DModel loads once per mount, so remount the view per model. */}
-      {name === 'All' ? (
-        <AllModelsView key={name} />
-      ) : (
-        <ModelView key={name} source={MODELS[name]} />
-      )}
+      {name === 'All' ? <AllModelsView key={name} /> : <ModelView key={name} source={MODELS[name]} />}
     </SafeAreaView>
   );
 }
 
 // Fits a model's canvas inside a box, centered.
-function fit(
-  model: Live2DModel | null,
-  box: { x: number; y: number; width: number; height: number }
-) {
+function fit(model: Live2DModel | null, box: { x: number; y: number; width: number; height: number }) {
   if (!model) return { x: 0, y: 0, scale: 1 };
   const scale = Math.min(box.width / model.width, box.height / model.height);
   return {
@@ -77,10 +47,7 @@ function fit(
   };
 }
 
-function offset(
-  place: { x: number; y: number; scale: number },
-  by: { x: number; y: number }
-) {
+function offset(place: { x: number; y: number; scale: number }, by: { x: number; y: number }) {
   return { ...place, x: place.x + by.x, y: place.y + by.y };
 }
 
@@ -106,13 +73,7 @@ function ModelView({ source }: { source: Live2DModelContext }) {
     <View style={styles.modelView} onLayout={onLayout}>
       <GestureDetector gesture={gesture}>
         <Canvas style={styles.canvas}>
-          <Live2D
-            model={model}
-            x={x}
-            y={y}
-            scale={scale}
-            onFrameStats={setStats}
-          />
+          <Live2D model={model} x={x} y={y} scale={scale} onFrameStats={setStats} />
         </Canvas>
       </GestureDetector>
       {!model && <Text style={styles.loading}>Loading model…</Text>}
@@ -158,11 +119,7 @@ function AllModelsView() {
         <Canvas style={styles.canvas}>
           {/* Behind the models: drawn first. */}
           <Rect x={0} y={0} width={size.width} height={size.height}>
-            <LinearGradient
-              start={vec(0, 0)}
-              end={vec(0, size.height)}
-              colors={['#cfe8ff', '#fdf3ff', '#ffffff']}
-            />
+            <LinearGradient start={vec(0, 0)} end={vec(0, size.height)} colors={['#cfe8ff', '#fdf3ff', '#ffffff']} />
           </Rect>
           <Circle cx={size.width * 0.8} cy={size.height * 0.22} r={48} color="#ffe08a">
             <BlurMask blur={12} style="solid" />
@@ -170,7 +127,7 @@ function AllModelsView() {
           <FloorShadow model={hiyori} place={left} />
           <FloorShadow model={mao} place={right} />
 
-          <Live2D model={hiyori} {...left} onFrameStats={setHiyoriStats} />
+          <Live2D model={hiyori} {...left} onFrameStats={setHiyoriStats} paused />
           <Live2D model={mao} {...right} onFrameStats={setMaoStats} />
 
           {/* Over the models: drawn last. */}
@@ -203,13 +160,7 @@ function AllModelsView() {
 
 // A soft ellipse under a model's feet. The models' canvases have some padding
 // below the feet, so it sits a little above the bottom of the model's box.
-function FloorShadow({
-  model,
-  place,
-}: {
-  model: Live2DModel | null;
-  place: { x: number; y: number; scale: number };
-}) {
+function FloorShadow({ model, place }: { model: Live2DModel | null; place: { x: number; y: number; scale: number } }) {
   if (!model) return null;
   const width = model.width * place.scale;
   const height = model.height * place.scale;
