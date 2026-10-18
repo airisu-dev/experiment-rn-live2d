@@ -12,6 +12,7 @@ import {
   type Live2DFrameStats,
   type Live2DModel,
   type Live2DModelContext,
+  type Live2DModelState,
 } from 'rn-live2d';
 
 // Each sample alone, or all of them side by side in one canvas.
@@ -36,6 +37,23 @@ export default function Home() {
   );
 }
 
+// Shown over the canvas while models load, or when one fails (e.g. Haru while offline).
+function LoadStatus({ states }: { states: Live2DModelState[] }) {
+  const failed = states.find((s) => s.error);
+  if (failed) {
+    return (
+      <View style={styles.error}>
+        <Text style={styles.errorText}>{failed.error!.message}</Text>
+        <Pressable onPress={failed.retry} style={[styles.option, styles.optionActive]}>
+          <Text style={[styles.optionText, styles.optionTextActive]}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
+  if (states.some((s) => s.loading)) return <Text style={styles.loading}>Loading…</Text>;
+  return null;
+}
+
 // Fits a model's canvas inside a box, centered.
 function fit(model: Live2DModel | null, box: { x: number; y: number; width: number; height: number }) {
   if (!model) return { x: 0, y: 0, scale: 1 };
@@ -51,8 +69,9 @@ function offset(place: { x: number; y: number; scale: number }, by: { x: number;
   return { ...place, x: place.x + by.x, y: place.y + by.y };
 }
 
-function ModelView({ source }: { source: Live2DModelContext }) {
-  const model = useLive2DModel(source);
+function ModelView({ source }: { source: Live2DModelContext | string }) {
+  const state = useLive2DModel(source);
+  const { model } = state;
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [stats, setStats] = useState<Live2DFrameStats | null>(null);
   const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);
@@ -76,7 +95,7 @@ function ModelView({ source }: { source: Live2DModelContext }) {
           <Live2D model={model} x={x} y={y} scale={scale} onFrameStats={setStats} />
         </Canvas>
       </GestureDetector>
-      {!model && <Text style={styles.loading}>Loading model…</Text>}
+      <LoadStatus states={[state]} />
       {stats && <Text style={styles.stats}>{formatStats(stats)}</Text>}
     </View>
   );
@@ -84,8 +103,10 @@ function ModelView({ source }: { source: Live2DModelContext }) {
 
 // Every sample model in one canvas, side by side: one shared animation loop.
 function AllModelsView() {
-  const hiyori = useLive2DModel(MODELS.Hiyori);
-  const mao = useLive2DModel(MODELS.Mao);
+  const hiyoriState = useLive2DModel(MODELS.Hiyori);
+  const maoState = useLive2DModel(MODELS.Mao);
+  const hiyori = hiyoriState.model;
+  const mao = maoState.model;
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [hiyoriStats, setHiyoriStats] = useState<Live2DFrameStats | null>(null);
   const [maoStats, setMaoStats] = useState<Live2DFrameStats | null>(null);
@@ -144,7 +165,7 @@ function AllModelsView() {
           <Circle cx={size.width * 0.78} cy={size.height * 0.55} r={18} color="rgba(255, 255, 255, 0.7)" />
         </Canvas>
       </GestureDetector>
-      {(!hiyori || !mao) && <Text style={styles.loading}>Loading models…</Text>}
+      <LoadStatus states={[hiyoriState, maoState]} />
       {hiyoriStats && maoStats && (
         <Text style={styles.stats}>
           {[
@@ -194,6 +215,14 @@ const styles = StyleSheet.create({
   modelView: { flex: 1 },
   canvas: { flex: 1 },
   loading: { position: 'absolute', alignSelf: 'center', top: '50%' },
+  error: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    padding: 24,
+  },
+  errorText: { textAlign: 'center', color: '#4a5563' },
   stats: {
     position: 'absolute',
     left: 12,
