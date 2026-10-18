@@ -144,12 +144,14 @@ export async function loadLive2DModel(
   // Apply the pose and the first idle motion's starting state.
   native.update(0)
 
+  // Trilinear: models are usually drawn far smaller than their 2048px textures,
+  // and without mipmaps thin lines (hair, outlines) break up into jaggies.
   const shaders = textures.map((t) =>
     t.makeShaderOptions(
       TileMode.Clamp,
       TileMode.Clamp,
       FilterMode.Linear,
-      MipmapMode.None
+      MipmapMode.Linear
     )
   )
   const width = native.canvasWidth
