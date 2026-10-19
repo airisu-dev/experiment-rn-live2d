@@ -9,7 +9,7 @@
     "start": "bun run --cwd apps/app start",
     "android": "bun run --cwd apps/app android",
     "ios": "bun run --cwd apps/app ios",
-    "lint": "eslint apps/app/src packages/rn-live2d/src packages/rn-live2d/plugin/src packages/rn-live2d/cli/src",
+    "lint": "eslint apps/*/src packages/demo/src packages/rn-live2d/src packages/rn-live2d/plugin/src packages/rn-live2d/cli/src",
     "typecheck": "tsc --noEmit -p apps/app && tsc --noEmit -p packages/rn-live2d && tsc -b packages/rn-live2d/plugin packages/rn-live2d/cli",
     "codegen": "bun --cwd packages/rn-live2d codegen",
     "fetch:cubism": "bash scripts/fetch-cubism-sdk.sh",

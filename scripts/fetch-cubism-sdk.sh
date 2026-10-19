@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Downloads Cubism SDK for Native from Live2D into the demo app's gitignored
 # apps/app/vendor/CubismSdkForNative/ folder (its cubismSdkPath in app.json), and
-# copies the sample models it uses into apps/app/assets/live2d/.
+# copies the sample models the shared demo uses into packages/demo/assets/live2d/.
 #
 # The SDK's Core is proprietary and is never committed (see docs/gotchas.md#licensing).
 # Running this means accepting Live2D's license terms, included in the SDK as LICENSE.md.
@@ -18,9 +18,9 @@ SAMPLES=(Hiyori Mao)
 node "$ROOT/packages/rn-live2d/cli/build/index.js" fetch-sdk --accept-license --out "$SDK_DIR" --keep-zip
 
 for name in "${SAMPLES[@]}"; do
-  dest="$APP/assets/live2d/$name"
+  dest="$ROOT/packages/demo/assets/live2d/$name"
   if [ ! -d "$dest" ]; then
-    mkdir -p "$APP/assets/live2d"
+    mkdir -p "$ROOT/packages/demo/assets/live2d"
     cp -R "$SDK_DIR/Samples/Resources/$name" "$dest"
     echo "Copied sample model $name to $dest"
   fi

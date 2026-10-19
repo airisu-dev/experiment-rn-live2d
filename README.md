@@ -7,6 +7,7 @@ Live2D Cubism models rendered natively in React Native with react-native-skia (A
 A Bun workspace:
 
 - `packages/rn-live2d/`: the library, published to npm as `rn-live2d`.
+- `packages/demo/`: the demo screens (private), shared by the apps.
 - `apps/app/`: the Expo demo app. It uses the library like any other app: a `workspace:*` dependency and the `rn-live2d` config plugin in its `app.json`.
 - `docs/`, `scripts/`: shared.
 

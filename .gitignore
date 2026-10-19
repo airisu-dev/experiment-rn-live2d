@@ -46,4 +46,4 @@ example
 /apps/*/vendor/
 
 # Live2D sample models (Live2D Free Material License; not redistributed)
-/apps/app/assets/live2d/
+/packages/demo/assets/live2d/

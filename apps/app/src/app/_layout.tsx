@@ -1,10 +1,2 @@
-import { Stack } from 'expo-router';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-export default function Layout() {
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }} />
-    </GestureHandlerRootView>
-  );
-}
+// The routes are the shared demo (packages/demo).
+export { DemoLayout as default } from 'rn-live2d-demo';

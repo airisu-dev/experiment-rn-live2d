@@ -1,6 +1,8 @@
+/// <reference types="expo/types" />
+// Metro's require.context types, whichever app compiles this.
 import type { Live2DModelContext } from 'rn-live2d';
 
-// Sample models from the Cubism SDK, copied to assets/live2d/ by `bun run fetch:cubism`.
+// Sample models from the Cubism SDK, copied to packages/demo/assets/live2d/ by `bun run fetch:cubism`.
 // Each is a require.context of the model's folder: the files its model3.json lists
 // are looked up in it. Metro needs the folder path as a string literal.
 // Haru loads from the network instead: the URL of its model3.json.
