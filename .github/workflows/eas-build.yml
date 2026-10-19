@@ -44,11 +44,18 @@ jobs:
     env:
       EAS_PROFILE: ${{ inputs.profile }}
       EAS_PLATFORM: ${{ inputs.platform }}
+    # Monorepo: the app (eas.json, app.json, ios/, android/) is in apps/app.
+    # Steps that act on the whole repo (install, fetching the SDK) run at the root.
+    defaults:
+      run:
+        working-directory: apps/app
 
     steps:
       - name: Prepare project
         id: plan
         shell: bash
+        # Runs before the checkout, when apps/app doesn't exist yet.
+        working-directory: .
         run: |
           set -euo pipefail
           # Fan the packed plan out into step outputs so later steps read it the
@@ -120,6 +127,7 @@ jobs:
 
       - name: Install JS dependencies
         shell: bash
+        working-directory: .
         run: |
           set -euo pipefail
           # Install with the project's real package manager. Resolving a bun or
@@ -139,11 +147,12 @@ jobs:
       - name: Restore Cubism SDK cache
         uses: actions/cache@v4
         with:
-          path: vendor/CubismSdkForNative-*.zip
+          path: apps/app/vendor/CubismSdkForNative-*.zip
           key: cubism-sdk-${{ hashFiles('scripts/fetch-cubism-sdk.sh', 'packages/rn-live2d/package.json') }}
 
       - name: Fetch Cubism SDK
         shell: bash
+        working-directory: .
         run: bash scripts/fetch-cubism-sdk.sh
 
       - name: Set up JDK
@@ -184,13 +193,13 @@ jobs:
         if: inputs.platform == 'ios' && steps.plan.outputs.cache_disabled != 'true'
         uses: actions/cache@v4
         with:
-          path: ios/Pods
-          key: pods-${{ steps.plan.outputs.cache_key }}-${{ hashFiles('ios/Podfile.lock') }}
+          path: apps/app/ios/Pods
+          key: pods-${{ steps.plan.outputs.cache_key }}-${{ hashFiles('apps/app/ios/Podfile.lock') }}
           restore-keys: pods-${{ steps.plan.outputs.cache_key }}-
 
       - name: Install pods
         if: inputs.platform == 'ios'
-        working-directory: ios
+        working-directory: apps/app/ios
         run: pod install
 
       - name: Resolve Xcode scheme
@@ -739,7 +748,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: application-archive
-          path: build/*
+          path: apps/app/build/*
           if-no-files-found: error
           retention-days: 90
 

@@ -91,7 +91,7 @@ const gesture = useLive2DGestures([
   (`src/ticker.ts`). Two `<Live2D>`s showing the same model share its frames.
 - The canvas is an ordinary view: size it with styles. Models are drawn at the
   `x`, `y`, `scale` they're given and clipped to the canvas, so fit them to the
-  measured size (see `fit()` in `src/app/index.tsx`).
+  measured size (see `fit()` in `apps/app/src/app/index.tsx`).
 
 ## Model methods
 
