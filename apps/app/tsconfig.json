@@ -24,8 +24,6 @@
     "jest.config.js",
     "android",
     "ios",
-    "vendor",
-    "packages/*/plugin",
-    "packages/*/cli"
+    "vendor"
   ]
 }

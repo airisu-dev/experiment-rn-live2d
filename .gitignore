@@ -39,11 +39,11 @@ yarn-error.*
 example
 
 # generated native folders
-/ios
-/android
+/apps/*/ios
+/apps/*/android
 
 # Cubism SDK for Native (proprietary; downloaded by scripts/fetch-cubism-sdk.sh)
-/vendor/
+/apps/*/vendor/
 
 # Live2D sample models (Live2D Free Material License; not redistributed)
-/assets/live2d/
+/apps/app/assets/live2d/
