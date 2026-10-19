@@ -74,7 +74,11 @@ function ModelView({ source }: { source: Live2DModelContext | string }) {
   const { model } = state;
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [stats, setStats] = useState<Live2DFrameStats | null>(null);
-  const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);
+  // Only the size: the layout's x and y are its position in the parent, not in the canvas.
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize({ width, height });
+  };
   // Where the model has been dragged to, relative to its fitted place.
   const [moved, setMoved] = useState({ x: 0, y: 0 });
   const fitted = fit(model, { x: 0, y: 0, ...size });
@@ -110,7 +114,11 @@ function AllModelsView() {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [hiyoriStats, setHiyoriStats] = useState<Live2DFrameStats | null>(null);
   const [maoStats, setMaoStats] = useState<Live2DFrameStats | null>(null);
-  const onLayout = (e: LayoutChangeEvent) => setSize(e.nativeEvent.layout);
+  // Only the size: the layout's x and y are its position in the parent, not in the canvas.
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize({ width, height });
+  };
 
   const half = size.width / 2;
   const hiyoriFitted = fit(hiyori, { x: 0, y: 0, width: half, height: size.height });

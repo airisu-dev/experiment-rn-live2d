@@ -3,7 +3,7 @@
     "name": "rn-live2d",
     "slug": "rn-live2d",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "rnlive2d",
     "userInterfaceStyle": "automatic",
