@@ -67,7 +67,8 @@ export function Live2D({
   // The loop publishes frames here. scheduleOnUI can't be called from a custom
   // worklet runtime (outside Bundle Mode), so the UI thread polls instead.
   const [latest] = useState(() => createSynchronizable<PublishedFrame>(null))
-  const shownFrame = useSharedValue(-1)
+  // The frame shown, told back to the loop so it frees only frames no longer shown.
+  const [shown] = useState(() => createSynchronizable(-1))
   // The display's frame interval: the shortest over a window of UI frames, so
   // dropped frames don't count. 0 until measured.
   const [displayFrameMs] = useState(() => createSynchronizable(0))
@@ -75,9 +76,9 @@ export function Live2D({
   const sampleCount = useSharedValue(0)
   useFrameCallback(({ timeSincePreviousFrame }) => {
     const next = latest.getDirty()
-    if (next && next.frame !== shownFrame.value) {
-      shownFrame.value = next.frame
+    if (next && next.frame !== shown.getDirty()) {
       picture.value = next.picture
+      shown.setBlocking(next.frame)
     }
     if (timeSincePreviousFrame !== null && timeSincePreviousFrame > 0) {
       sampleMin.value = Math.min(sampleMin.value, timeSincePreviousFrame)
@@ -113,7 +114,7 @@ export function Live2D({
 
     // Frame numbers restart when the model starts animating again.
     latest.setBlocking(null)
-    shownFrame.set(-1)
+    shown.setBlocking(-1)
     const running = createSynchronizable(true)
     scheduleOnRuntime(
       live2dRuntime(),
@@ -127,6 +128,7 @@ export function Live2D({
       },
       {
         target: latest,
+        shown,
         running,
         displayMs: displayFrameMs,
         capMs: capFrameMs,
@@ -139,7 +141,7 @@ export function Live2D({
     paused,
     picture,
     latest,
-    shownFrame,
+    shown,
     displayFrameMs,
     capFrameMs,
     wantStats,

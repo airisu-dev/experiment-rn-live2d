@@ -51,6 +51,11 @@ export type PublishedFrame = { frame: number; picture: SkPicture } | null
 export interface TickerView {
   /** Receives each new frame. */
   target: Synchronizable<PublishedFrame>
+  /**
+   * The frame the UI thread shows, set when it takes one from `target`; -1
+   * before the first. Frames are freed only once every view is past them.
+   */
+  shown: Synchronizable<number>
   /** Set to false to stop showing frames here. */
   running: Synchronizable<boolean>
   /** The display's frame interval, measured on the UI thread; 0 until known. */
@@ -72,8 +77,9 @@ export interface TickerModel {
 
 // Longest step per frame, so returning from the background doesn't jump motions and physics.
 const MAX_DELTA_SECONDS = 0.1
-// Frames kept alive after being replaced, in case the UI thread hasn't drawn them yet.
-const KEEP_FRAMES = 4
+// How far drawing may run ahead of the slowest view's UI thread. Beyond it the
+// model waits, e.g. while the app is in the background and the UI thread doesn't draw.
+const MAX_FRAMES_AHEAD = 4
 // Frame time until the display's refresh rate is known, and its limits.
 const DEFAULT_FRAME_MS = 1000 / 60
 const MIN_FRAME_MS = 1000 / 144
@@ -82,14 +88,29 @@ const STATS_INTERVAL_MS = 1000
 // A capped model draws on the first tick at least this close to its interval.
 const CAP_TOLERANCE_MS = 1
 
+interface Slot {
+  view: TickerView
+  /** The entry's newest frame when the view joined: the oldest it can show before acking one. */
+  since: number
+}
+
+interface Frame {
+  frame: number
+  picture: SkPicture
+}
+
 interface Entry {
   native: NativeModel
   /** Draws the model's current state: in C++ when built with Skia, else in JS. */
   nativeDraw: ((stats?: DrawStats) => SkPicture) | null
   jsDraw: ReturnType<typeof createDrawer> | null
-  views: TickerView[]
-  /** Frames drawn, newest last. Freed explicitly: the GC doesn't see their native memory. */
-  shown: SkPicture[]
+  views: Slot[]
+  /**
+   * Frames a view may still show, oldest first. Freed explicitly once no view
+   * can show them: the GC doesn't see their native memory.
+   */
+  frames: Frame[]
+  /** The newest frame's number; 0 before the first. */
   frame: number
   last: number | null
   // Totals since the last stats report.
@@ -131,16 +152,37 @@ function tickerState(): Ticker {
   return global.__rnLive2dTicker
 }
 
+// The oldest frame a view may be showing.
+function oldestShown(slot: Slot) {
+  'worklet'
+  const shown = slot.view.shown.getDirty()
+  return shown >= 0 ? shown : slot.since
+}
+
+// A view stopped (paused or unmounted) but keeps showing its last frame, and
+// its UI thread may still take a newer one already published. Those frames are
+// handed over to it: dropped from the entry unfreed, for the GC to collect.
+function releaseView(entry: Entry, slot: Slot) {
+  'worklet'
+  const oldest = oldestShown(slot)
+  entry.frames = entry.frames.filter((f) => f.frame < oldest)
+}
+
+// Frees frames older than every view's shown frame, keeping one more: the JS
+// thread may have just read the shown picture for a redraw.
 function freeFrames(entry: Entry) {
   'worklet'
-  // The newest frame may still be shown (a paused view keeps it), so keep it.
-  entry.shown.slice(0, -1).forEach((p) => p.dispose())
-  entry.shown = entry.shown.slice(-1)
+  const keepFrom = Math.min(...entry.views.map(oldestShown)) - 1
+  while (entry.frames.length > 0 && entry.frames[0]!.frame < keepFrom) {
+    entry.frames.shift()!.picture.dispose()
+  }
 }
 
 function stopEntry(ticker: Ticker, id: number, entry: Entry) {
   'worklet'
-  freeFrames(entry)
+  // Its views are released: no view can show what's left.
+  for (const f of entry.frames) f.picture.dispose()
+  entry.frames = []
   ticker.entries.delete(id)
 }
 
@@ -166,11 +208,10 @@ function drawEntry(entry: Entry, frameStart: number, wantStats: boolean) {
     picture = entry.jsDraw!(drawables, stats)
   }
   entry.frame++
-  for (const view of entry.views) {
+  for (const { view } of entry.views) {
     view.target.setBlocking({ frame: entry.frame, picture })
   }
-  entry.shown.push(picture)
-  if (entry.shown.length > KEEP_FRAMES) entry.shown.shift()!.dispose()
+  entry.frames.push({ frame: entry.frame, picture })
   if (wantStats) {
     const end = now()
     entry.statsFrames++
@@ -199,7 +240,7 @@ function reportEntry(ticker: Ticker, entry: Entry, at: number, frameMs: number) 
     models: ticker.entries.size,
     loopWorkMs: ticker.loopFrames > 0 ? ticker.loopWorkMs / ticker.loopFrames : 0,
   }
-  for (const view of entry.views) {
+  for (const { view } of entry.views) {
     if (view.report) scheduleOnRN(view.report, stats)
   }
   entry.statsStart = at
@@ -219,26 +260,38 @@ function runFrame(): number | null {
   const frameStart = now()
   let displayMs = 0
   for (const [id, entry] of ticker.entries) {
-    entry.views = entry.views.filter((v) => v.running.getDirty())
+    const stopped = entry.views.filter((s) => !s.view.running.getDirty())
+    if (stopped.length > 0) {
+      for (const slot of stopped) releaseView(entry, slot)
+      entry.views = entry.views.filter((s) => !stopped.includes(s))
+    }
     if (entry.views.length === 0) {
       stopEntry(ticker, id, entry)
       continue
     }
-    for (const view of entry.views) {
+    freeFrames(entry)
+    for (const { view } of entry.views) {
       const ms = view.displayMs.getDirty()
       if (ms > 0 && (displayMs === 0 || ms < displayMs)) displayMs = ms
     }
     // The fastest view sets the model's frame rate.
-    const capMs = Math.min(...entry.views.map((v) => v.capMs))
+    const capMs = Math.min(...entry.views.map((s) => s.view.capMs))
     if (entry.last !== null && frameStart - entry.last < capMs - CAP_TOLERANCE_MS) {
       continue
     }
-    const wantStats = entry.views.some((v) => v.report !== null)
+    // Wait for a UI thread that's behind, rather than draw frames it won't show.
+    if (entry.frame - Math.min(...entry.views.map(oldestShown)) >= MAX_FRAMES_AHEAD) {
+      continue
+    }
+    const wantStats = entry.views.some((s) => s.view.report !== null)
     try {
       drawEntry(entry, frameStart, wantStats)
     } catch (e) {
       // An uncaught error on this runtime aborts the app: drop the model instead.
-      for (const view of entry.views) view.running.setBlocking(false)
+      for (const slot of entry.views) {
+        slot.view.running.setBlocking(false)
+        releaseView(entry, slot)
+      }
       stopEntry(ticker, id, entry)
       scheduleOnRN(reportError, String((e as Error)?.stack ?? e))
     }
@@ -252,7 +305,7 @@ function runFrame(): number | null {
     Math.max(MIN_FRAME_MS, displayMs || DEFAULT_FRAME_MS)
   )
   for (const entry of ticker.entries.values()) {
-    const capMs = Math.min(...entry.views.map((v) => v.capMs))
+    const capMs = Math.min(...entry.views.map((s) => s.view.capMs))
     reportEntry(ticker, entry, end, Math.max(interval, capMs))
   }
   if (end - ticker.loopStatsStart >= STATS_INTERVAL_MS) {
@@ -290,7 +343,7 @@ export function addToTicker(model: TickerModel, view: TickerView) {
           ? null
           : createDrawer(model.textures, model.shaders, model.canvas),
         views: [],
-        shown: [],
+        frames: [],
         frame: 0,
         last: null,
         statsStart: now(),
@@ -307,7 +360,10 @@ export function addToTicker(model: TickerModel, view: TickerView) {
     }
     ticker.entries.set(model.id, entry)
   }
-  entry.views.push(view)
+  entry.views.push({ view, since: entry.frame })
+  // Joining a model that's already animating: show its newest frame right away.
+  const newest = entry.frames[entry.frames.length - 1]
+  if (newest) view.target.setBlocking({ frame: newest.frame, picture: newest.picture })
   if (!ticker.running) {
     ticker.running = true
     ticker.nextFrameAt = 0

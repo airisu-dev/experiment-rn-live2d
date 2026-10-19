@@ -62,6 +62,11 @@ Goal: room for two models. Each `<Live2D>` used to run its own timer loop.
 - **One loop for all models.** The live2d worklet runtime keeps one ticker in its `globalThis`. Each frame it updates and draws every registered model once, then publishes the picture to that model's views. The timer stops when nothing is shown, and pacing is shared (absolute frame times, see above).
 - **Models are entries, `<Live2D>`s are views.** Entries are keyed by `Live2DModel.id` (set at load). Two views of one model share its frames instead of updating it twice per frame, which would play it at double speed. A view stops by setting its `running` flag; an entry goes when it has no views.
 - **`maxFps` is per model.** The ticker runs at the display's rate, and a capped model skips ticks until its interval has passed (the fastest view's cap wins).
+- **Frames are freed when no view shows them.**
+  - **What went wrong:** frames used to be freed 4 frames after being replaced. A UI thread that fell further behind still held a freed picture: a stall, the app in the background, or a view stopping on the second-newest frame. The next redraw then failed with `Attempted to access a disposed object`, usually a JS-thread redraw after a re-render.
+  - **The UI thread reports back:** each view sets its `shown` synchronizable to the frame it takes. A frame is freed once every view is past it, keeping one extra for a JS-thread redraw that just read it.
+  - **Drawing waits for the slowest view:** it stays at most 4 frames ahead of the slowest view's UI thread. In the background the loop waits instead of piling up frames.
+  - **A stopped view keeps its frames:** a paused or unmounted view still shows its last frame. The frames it could still show leave the entry unfreed, and the GC collects them later. This also fixes pausing one of two views of the same model.
 - **Errors stay local.** A model that throws is dropped and logged, and the others keep going.
 - **Stats** are per model (each timed from its own start), plus `models` and `loopWorkMs` for the whole loop.
 
