@@ -9,7 +9,7 @@ A React Native library that renders Live2D Cubism models **natively** on Android
 | [api.md](./api.md) | Public, pixi-live2d-style API |
 | [gotchas.md](./gotchas.md) | Licensing, assets, alpha, safety, coordinates |
 | [roadmap.md](./roadmap.md) | Milestones |
-| [plan/](./plan/) | Per-milestone plans ([1](./plan/milestone-01.md), [2](./plan/milestone-02.md), [3](./plan/milestone-03.md), [4](./plan/milestone-04.md), [5](./plan/milestone-05.md)) |
+| [plan/](./plan/) | Per-milestone plans ([1](./plan/milestone-01.md), [2](./plan/milestone-02.md), [3](./plan/milestone-03.md), [4](./plan/milestone-04.md), [5](./plan/milestone-05.md), [6](./plan/milestone-06.md)) |
 
 ## Core idea
 
