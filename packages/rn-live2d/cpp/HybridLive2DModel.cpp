@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <numeric>
 #include "CubismSetup.hpp"
-#include "Live2DCubismCore.hpp"
+#include "CubismCompat.hpp"
 
 namespace margelo::nitro::rnlive2d {
 
@@ -51,7 +51,7 @@ std::vector<DrawableData> HybridLive2DModel::getDrawables() {
     std::lock_guard lock(_mutex);
     const csmModel* model = _userModel->model()->GetModel();
     const int count = csmGetDrawableCount(model);
-    const int* renderOrders = csmGetRenderOrders(model);
+    const int* renderOrders = cubism::renderOrders(model);
     const csmFlags* dynamicFlags = csmGetDrawableDynamicFlags(model);
     const csmFlags* constantFlags = csmGetDrawableConstantFlags(model);
     const int* textureIndices = csmGetDrawableTextureIndices(model);

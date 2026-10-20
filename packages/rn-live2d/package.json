@@ -133,7 +133,11 @@
     ]
   },
   "cubismSdk": {
-    "version": "5-r.5",
-    "sha256": "7ff3a4bbc19c0a8728965aa522ab77eb11b252916453e68a8a78d3b71188bb12"
+    "latest": "5-r.5",
+    "versions": {
+      "5-r.5": {
+        "sha256": "7ff3a4bbc19c0a8728965aa522ab77eb11b252916453e68a8a78d3b71188bb12"
+      }
+    }
   }
 }

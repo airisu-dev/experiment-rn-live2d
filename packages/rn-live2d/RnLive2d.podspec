@@ -21,12 +21,25 @@ unless File.file?(cubism_info)
         "Download it with `rn-live2d fetch-sdk --accept-license` (through npx, bunx, yarn or pnpm)."
 end
 cubism_version = File.read(cubism_info)[/^version:\s*(\S+)/, 1] || "unknown"
-supported_version = package["cubismSdk"]["version"]
-if cubism_version.split("-").first != supported_version.split("-").first
-  raise "[rn-live2d] Cubism SDK for Native #{cubism_version} at #{cubism_sdk_dir} isn't supported: use #{supported_version}."
+
+# A Cubism SDK version as a number: major * 10000 + release * 100 + patch, so
+# 5-r.4.1 is 50401 (a -beta suffix is ignored). Nil if it isn't one.
+cubism_version_number = lambda do |version|
+  m = version.match(/^(\d+)-r\.(\d+)(?:\.(\d+))?/)
+  m && m[1].to_i * 10000 + m[2].to_i * 100 + m[3].to_i
 end
-if cubism_version != supported_version
-  Pod::UI.warn "[rn-live2d] Cubism SDK for Native #{cubism_version} found, tested with #{supported_version}."
+
+# Listed versions (cubismSdk.versions in package.json) are supported. A newer
+# release of a listed major only warns; anything else fails.
+listed_versions = package["cubismSdk"]["versions"].keys
+cubism_version_num = cubism_version_number.call(cubism_version)
+unless listed_versions.include?(cubism_version)
+  newest_of_major = cubism_version_num && listed_versions.map { |v| cubism_version_number.call(v) }
+                                                         .select { |n| n / 10000 == cubism_version_num / 10000 }.max
+  if newest_of_major.nil? || cubism_version_num < newest_of_major
+    raise "[rn-live2d] Cubism SDK for Native #{cubism_version} at #{cubism_sdk_dir} isn't supported: use #{listed_versions.join(', ')}."
+  end
+  Pod::UI.warn "[rn-live2d] Cubism SDK for Native #{cubism_version} found, tested with #{listed_versions.join(', ')}."
 end
 
 # CocoaPods only compiles files inside the pod, and the SDK ships one Core static
@@ -113,7 +126,8 @@ Pod::Spec.new do |s|
     "\"$(PODS_TARGET_SRCROOT)/cubism-sdk/Core/include\"",
     "\"$(PODS_TARGET_SRCROOT)/cubism-sdk/Framework\"",
   ]
-  preprocessor_definitions = ["$(inherited)"]
+  # The SDK's version, for cpp/CubismCompat.hpp.
+  preprocessor_definitions = ["$(inherited)", "RN_LIVE2D_CUBISM_SDK=#{cubism_version_num}"]
   if rn_skia_dir
     Pod::UI.puts "[RnLive2d] Drawing with Skia in C++ (#{rn_skia_dir}, #{rn_skia_graphite ? 'Graphite' : 'Ganesh'})"
     s.dependency "react-native-skia"

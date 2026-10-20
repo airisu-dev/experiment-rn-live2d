@@ -1,6 +1,7 @@
 #if RN_LIVE2D_SKIA
 
 #include "SkiaDrawer.hpp"
+#include "CubismCompat.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -146,7 +147,7 @@ jsi::Value SkiaDrawer::draw(jsi::Runtime& runtime, const jsi::Value& canvasValue
     d.meshMs = 0;
     int layers = 0;
 
-    const int* renderOrders = csmGetRenderOrders(model);
+    const int* renderOrders = cubism::renderOrders(model);
     const csmFlags* dynamicFlags = csmGetDrawableDynamicFlags(model);
     const csmFlags* constantFlags = csmGetDrawableConstantFlags(model);
     const int* textureIndices = csmGetDrawableTextureIndices(model);
