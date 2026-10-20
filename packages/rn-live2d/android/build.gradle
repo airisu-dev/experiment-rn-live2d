@@ -29,7 +29,7 @@ if (isNewArchitectureEnabled()) {
 
 // Cubism SDK for Native: proprietary, so each app downloads it from Live2D and
 // sets its folder (app.plugin.js writes rnLive2d.cubismSdkPath, relative to android/).
-def cubismSdkDir() {
+def findCubismSdk() {
   def configured = System.getenv("RN_LIVE2D_CUBISM_SDK") ?: rootProject.findProperty("rnLive2d.cubismSdkPath")
   if (!configured) {
     throw new GradleException("[rn-live2d] Cubism SDK for Native isn't configured. Add the plugin to app.json: " +
@@ -43,14 +43,29 @@ def cubismSdkDir() {
   }
   def matcher = info.text =~ /(?m)^version:\s*(\S+)/
   def version = matcher.find() ? matcher.group(1) : "unknown"
-  def supported = new groovy.json.JsonSlurper().parse(file("../package.json")).cubismSdk.version
-  if (version.tokenize("-")[0] != supported.tokenize("-")[0]) {
-    throw new GradleException("[rn-live2d] Cubism SDK for Native ${version} at ${dir} isn't supported: use ${supported}.")
+  checkCubismSdkVersion(version, dir)
+  return [dir: dir.absolutePath.replace("\\", "/"), version: version]
+}
+
+// A Cubism SDK version as a number: major * 10000 + release * 100 + patch, so
+// 5-r.4.1 is 50401 (a -beta suffix is ignored). Null if it isn't one.
+def cubismSdkVersionNumber(String version) {
+  def m = version =~ /^(\d+)-r\.(\d+)(?:\.(\d+))?/
+  return m.find() ? m.group(1).toInteger() * 10000 + m.group(2).toInteger() * 100 + (m.group(3) ?: "0").toInteger() : null
+}
+
+// Listed versions (cubismSdk.versions in package.json) are supported. A newer
+// release of a listed major only warns; anything else fails.
+def checkCubismSdkVersion(String version, File dir) {
+  def listed = new groovy.json.JsonSlurper().parse(file("../package.json")).cubismSdk.versions.keySet()
+  if (listed.contains(version)) return
+  def number = cubismSdkVersionNumber(version)
+  def newestOfMajor = number == null ? null : listed.collect { cubismSdkVersionNumber(it) }
+    .findAll { it.intdiv(10000) == number.intdiv(10000) }.max()
+  if (newestOfMajor == null || number < newestOfMajor) {
+    throw new GradleException("[rn-live2d] Cubism SDK for Native ${version} at ${dir} isn't supported: use ${listed.join(', ')}.")
   }
-  if (version != supported) {
-    logger.warn("[rn-live2d] Cubism SDK for Native ${version} found, tested with ${supported}.")
-  }
-  return dir.absolutePath.replace("\\", "/")
+  logger.warn("[rn-live2d] Cubism SDK for Native ${version} found, tested with ${listed.join(', ')}.")
 }
 
 // The folder of a node package, as `from` resolves it. Null if it isn't installed.
@@ -107,8 +122,10 @@ android {
     externalNativeBuild {
       cmake {
         cppFlags "-frtti -fexceptions -Wall -Wextra -fstack-protector-all"
+        def cubismSdk = findCubismSdk()
         arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
-          "-DCUBISM_SDK_DIR=${cubismSdkDir()}", *skiaCmakeArguments()
+          "-DCUBISM_SDK_DIR=${cubismSdk.dir}",
+          "-DCUBISM_SDK_VERSION_NUMBER=${cubismSdkVersionNumber(cubismSdk.version)}", *skiaCmakeArguments()
         abiFilters (*reactNativeArchitectures())
 
         buildTypes {

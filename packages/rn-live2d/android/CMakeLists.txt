@@ -10,10 +10,12 @@ add_compile_options(-DRN_SERIALIZABLE_STATE=1)
 
 # Cubism SDK for Native: proprietary, downloaded by each app. build.gradle
 # passes its folder (and checks its version), see app.plugin.js.
-if (NOT CUBISM_SDK_DIR)
+if (NOT CUBISM_SDK_DIR OR NOT CUBISM_SDK_VERSION_NUMBER)
         message(FATAL_ERROR "[rn-live2d] CUBISM_SDK_DIR isn't set: build through Gradle, "
                 "with rnLive2d.cubismSdkPath set by the rn-live2d config plugin.")
 endif()
+# The SDK's version, for cpp/CubismCompat.hpp.
+add_compile_definitions(RN_LIVE2D_CUBISM_SDK=${CUBISM_SDK_VERSION_NUMBER})
 
 # Cubism Core (closed source): the prebuilt static library.
 set (CUBISM_CORE_DIR "${CUBISM_SDK_DIR}/Core")
