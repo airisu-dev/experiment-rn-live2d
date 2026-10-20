@@ -72,8 +72,17 @@
     "react-native-gesture-handler": "*",
     "react-native-nitro-modules": "*",
     "react-native-reanimated": "*",
-    "react-native-skia": "*",
+    "react-native-skia": ">=3.3.0",
+    "@shopify/react-native-skia": ">=2.10.0",
     "react-native-worklets": "*"
+  },
+  "peerDependenciesMeta": {
+    "@shopify/react-native-skia": {
+      "optional": true
+    },
+    "react-native-skia": {
+      "optional": true
+    }
   },
   "eslintConfig": {
     "root": true,

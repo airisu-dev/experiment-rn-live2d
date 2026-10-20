@@ -8,10 +8,11 @@ A Bun workspace:
 
 - `packages/rn-live2d/`: the library, published to npm as `rn-live2d`.
 - `packages/demo/`: the demo screens (private), shared by the apps.
-- `apps/app/`: the Expo demo app. It uses the library like any other app: a `workspace:*` dependency and the `rn-live2d` config plugin in its `app.json`.
+- `apps/app/`: the demo on Skia v3 (`react-native-skia`). It uses the library like any other app: a `workspace:*` dependency and the `rn-live2d` config plugin in its `app.json`.
+- `apps/app-skia2/`: the same demo on Skia v2 (`@shopify/react-native-skia`). It shares the first app's EAS project, bundle id and Cubism SDK folder, so installing one replaces the other on a device.
 - `docs/`, `scripts/`: shared.
 
-Run installs and the shared scripts (`lint`, `typecheck`, `codegen`, `fetch:cubism`) from the root, and Expo commands from `apps/app`.
+Run installs and the shared scripts (`lint`, `typecheck`, `codegen`, `fetch:cubism`) from the root, and Expo commands from an app's folder. To run both apps' Metro at once, give one `--port 8082` (on an emulator, also `adb reverse tcp:8082 tcp:8082`). CI builds `apps/app` only.
 
 ## Setup
 

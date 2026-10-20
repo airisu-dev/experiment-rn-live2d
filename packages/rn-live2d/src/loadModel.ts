@@ -8,7 +8,7 @@ import {
   type SkImage,
   type SkPicture,
   type SkShader,
-} from 'react-native-skia'
+} from './skia'
 import { toCubismJson } from './cubismJson'
 import {
   createDrawer,

@@ -59,22 +59,19 @@ include_directories(
         "${CUBISM_CORE_DIR}/include"
 )
 
-# Draw in C++ onto react-native-skia canvases (cpp/SkiaDrawer.cpp). librnskia.so
-# doesn't export Skia, so link the same prebuilt libskia.a it's built from and
-# use its headers and defines; objects cross over through virtual calls. Without
-# the packages, models are drawn in JS (src/drawer.ts).
-if (NOT RN_SKIA_DIR)
-        get_filename_component(RN_SKIA_DIR "${CMAKE_SOURCE_DIR}/../../../node_modules/react-native-skia" ABSOLUTE)
-endif()
-get_filename_component(RN_SKIA_LIBS "${RN_SKIA_DIR}/../react-native-skia-graphite-android/libs/${ANDROID_ABI}" ABSOLUTE)
-if (EXISTS "${RN_SKIA_LIBS}/libskia.a" AND EXISTS "${RN_SKIA_DIR}/cpp/api/JsiSkCanvas.h")
-        message(STATUS "rn-live2d: drawing with Skia in C++ (${RN_SKIA_LIBS})")
+# Draw in C++ onto Skia canvases (cpp/SkiaDrawer.cpp). librnskia.so doesn't
+# export Skia, so link the same prebuilt libskia.a it's built from and use its
+# headers and defines; objects cross over through virtual calls. build.gradle
+# passes the folders of the Skia the app uses, v3 (Graphite) or v2 (Ganesh).
+# Without them, models are drawn in JS (src/drawer.ts).
+set (RN_SKIA_LIBS_ABI "${RN_SKIA_LIBS}/${ANDROID_ABI}")
+if (RN_SKIA_DIR AND EXISTS "${RN_SKIA_LIBS_ABI}/libskia.a" AND EXISTS "${RN_SKIA_DIR}/cpp/api/JsiSkCanvas.h")
+        message(STATUS "rn-live2d: drawing with Skia in C++ (${RN_SKIA_DIR}, Graphite: ${RN_SKIA_GRAPHITE})")
         add_library(skia STATIC IMPORTED)
-        set_target_properties(skia PROPERTIES IMPORTED_LOCATION "${RN_SKIA_LIBS}/libskia.a")
+        set_target_properties(skia PROPERTIES IMPORTED_LOCATION "${RN_SKIA_LIBS_ABI}/libskia.a")
         target_sources(${PACKAGE_NAME} PRIVATE ../cpp/SkiaDrawer.cpp)
         target_include_directories(${PACKAGE_NAME} PRIVATE
                 "${RN_SKIA_DIR}/cpp/skia"
-                "${RN_SKIA_DIR}/cpp/dawn/include"
                 "${RN_SKIA_DIR}/cpp/api"
                 "${RN_SKIA_DIR}/cpp/jsi"
                 "${RN_SKIA_DIR}/cpp/rnskia"
@@ -83,17 +80,23 @@ if (EXISTS "${RN_SKIA_LIBS}/libskia.a" AND EXISTS "${RN_SKIA_DIR}/cpp/api/JsiSkC
                 "${RN_SKIA_DIR}/cpp"
                 "${RN_SKIA_DIR}/android/cpp/rnskia-android"
                 "${RN_SKIA_DIR}/android/cpp/jni/include"
-                "${RN_SKIA_DIR}/../react-native/ReactCommon"
-                "${RN_SKIA_DIR}/../react-native/ReactCommon/callinvoker")
-        # Same as react-native-skia's build: struct layouts must match.
+                "${REACT_NATIVE_DIR}/ReactCommon"
+                "${REACT_NATIVE_DIR}/ReactCommon/callinvoker")
+        # Same as the Skia package's build: struct layouts must match.
         target_compile_definitions(${PACKAGE_NAME} PRIVATE
-                RN_LIVE2D_SKIA=1 SK_GRAPHITE SK_BUILD_FOR_ANDROID
+                RN_LIVE2D_SKIA=1 SK_BUILD_FOR_ANDROID
                 SK_DISABLE_LEGACY_SHAPER_FACTORY SK_IMAGE_READ_PIXELS_DISABLE_LEGACY_API
                 FOLLY_NO_CONFIG=1 FOLLY_HAVE_CLOCK_GETTIME=1 FOLLY_HAVE_MEMRCHR=1
                 FOLLY_USE_LIBCPP=1 FOLLY_MOBILE=1 ON_ANDROID ONANDROID)
+        if (RN_SKIA_GRAPHITE)
+                target_include_directories(${PACKAGE_NAME} PRIVATE "${RN_SKIA_DIR}/cpp/dawn/include")
+                target_compile_definitions(${PACKAGE_NAME} PRIVATE SK_GRAPHITE)
+        else()
+                target_compile_definitions(${PACKAGE_NAME} PRIVATE SK_GL SK_GANESH)
+        endif()
         set (RN_LIVE2D_SKIA_LIBS skia)
 else()
-        message(STATUS "rn-live2d: react-native-skia not found, drawing in JS")
+        message(STATUS "rn-live2d: no Skia to draw with in C++, drawing in JS")
 endif()
 
 find_library(LOG_LIB log)

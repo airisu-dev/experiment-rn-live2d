@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Downloads Cubism SDK for Native from Live2D into the demo app's gitignored
-# apps/app/vendor/CubismSdkForNative/ folder (its cubismSdkPath in app.json), and
-# copies the sample models the shared demo uses into packages/demo/assets/live2d/.
+# Downloads Cubism SDK for Native from Live2D into the gitignored
+# apps/app/vendor/CubismSdkForNative/ folder (the cubismSdkPath of both example
+# apps), and copies the sample models the shared demo uses into
+# packages/demo/assets/live2d/.
 #
 # The SDK's Core is proprietary and is never committed (see docs/gotchas.md#licensing).
 # Running this means accepting Live2D's license terms, included in the SDK as LICENSE.md.

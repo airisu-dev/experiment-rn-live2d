@@ -49,3 +49,12 @@ The React Compiler is on, and it compiles the workspace package too. A `let` rea
 
 - `Pan().activateAfterLongPress`: `onBegin` doesn't run before `onStart` the way you'd expect, so don't save the press position in `onBegin` for `onStart`. Read it from `onStart`'s own event; the finger has barely moved by then.
 - Combining separate per-model gestures with `Gesture.Simultaneous` doesn't make their inner gestures simultaneous with each other. Use one gesture for all models (`useLive2DGestures`).
+
+## Skia v2 and v3
+
+rn-live2d works with Skia v3 (`react-native-skia`, Graphite) and v2 (`@shopify/react-native-skia`, Ganesh) from 2.10. The APIs it uses are the same in both, in JS and in C++ (`JsiSkNativeObjects.h`, `JsiSkShader.h` and `JsiSkCanvas::getCanvas` match). Before 2.10 (2.6–2.9, and 2.6.2 is what `expo install` picks for SDK 57), Skia objects reach C++ as JSI host objects instead of native state, which `SkiaDrawer` doesn't unwrap.
+
+- **JS:** `src/skia.ts` requires v3, else v2 (Expo's Metro treats guarded requires as optional), and declares the few Skia types the library uses itself: its sources are type-checked by the app, which may have only one of the packages.
+- **Native:** the config plugin writes the Skia package the app's `package.json` depends on as `rnLive2d.skiaPackage`. `build.gradle` and the podspec resolve it from the app's folder, not the library's: in a monorepo both versions are installed side by side (different names, so hoisting keeps both). Graphite builds use `SK_GRAPHITE` and the Dawn headers; Ganesh builds `SK_GL SK_GANESH` (Android) or `SK_METAL SK_GANESH` (iOS), and link `react-native-skia-android`'s `libskia.a`.
+- **Monorepo apps on v2** map `react-native-skia` to `@shopify/react-native-skia` in their Metro config (`apps/app-skia2/metro.config.js`): otherwise the library's guarded require finds the hoisted v3 first.
+- **Changing a package's version with Bun** (2.6.2 to 2.14.0 here) left the old version's extra folders in `node_modules` (2.6.2's `cpp/jsi2`, `android/src/paper`, …), and the Android build failed on the mix: first Skia's `prepareHeaders` on two `EnumMapper.h`, then Java on old classes. Delete the package's folder and reinstall, and delete `android/app/build/generated/autolinking` if autolinking still lists old classes.
