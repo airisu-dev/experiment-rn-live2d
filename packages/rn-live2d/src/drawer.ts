@@ -12,7 +12,7 @@ import {
   type SkRect,
   type SkShader,
   type SkVertices,
-} from 'react-native-skia'
+} from './skia'
 import { now } from './clock'
 import type { DrawableData } from './specs/rn-live2d.nitro'
 
@@ -21,7 +21,7 @@ const csmBlendAdditive = 1 << 0
 const csmBlendMultiplicative = 1 << 1
 const csmIsInvertedMask = 1 << 3
 
-function blendModeOf(flags: number): BlendMode {
+function blendModeOf(flags: number): number {
   'worklet'
   if (flags & csmBlendAdditive) return BlendMode.Plus
   if (flags & csmBlendMultiplicative) return BlendMode.Multiply

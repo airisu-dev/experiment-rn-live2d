@@ -65,13 +65,22 @@ unless File.exist?(cubism_stamp_path) && File.read(cubism_stamp_path) == cubism_
   Pod::UI.puts "[rn-live2d] Using Cubism SDK for Native #{cubism_version} from #{cubism_sdk_dir}"
 end
 
-# Draw in C++ onto react-native-skia canvases (cpp/SkiaDrawer.cpp). Skia is
-# linked statically into the app by the react-native-skia pod, so this only needs
-# its headers and the defines it's built with. Without it, models are drawn in JS.
-rn_skia_dir = Dir.chdir(__dir__) do
-  `node -e "process.stdout.write(require('path').dirname(require.resolve('react-native-skia/package.json')))" 2>/dev/null`.strip
+# Draw in C++ onto Skia canvases (cpp/SkiaDrawer.cpp). Skia is linked statically
+# into the app by its pod (named react-native-skia in v3 and v2), so this only
+# needs its headers and the defines it's built with. Which Skia: the one
+# app.plugin.js found in the app's package.json (rnLive2d.skiaPackage), v3
+# (Graphite) or v2 (Ganesh), resolved from the app since a monorepo can have
+# both installed. Without it, models are drawn in JS.
+rn_skia_package = podfile_properties["rnLive2d.skiaPackage"].to_s
+rn_skia_dir = nil
+unless rn_skia_package.empty?
+  app_dir = File.dirname(ios_dir)
+  resolved = IO.popen(["node", "-p",
+                       "require('path').dirname(require.resolve(process.argv[1] + '/package.json', { paths: [process.argv[2]] }))",
+                       rn_skia_package, app_dir], err: File::NULL, &:read).to_s.strip
+  rn_skia_dir = resolved if $?.success? && File.file?(File.join(resolved, "cpp", "api", "JsiSkCanvas.h"))
 end
-rn_skia_dir = nil if rn_skia_dir.empty? || !File.file?(File.join(rn_skia_dir, "cpp", "api", "JsiSkCanvas.h"))
+rn_skia_graphite = rn_skia_package == "react-native-skia"
 
 Pod::Spec.new do |s|
   s.name         = "RnLive2d"
@@ -106,17 +115,18 @@ Pod::Spec.new do |s|
   ]
   preprocessor_definitions = ["$(inherited)"]
   if rn_skia_dir
-    Pod::UI.puts "[RnLive2d] Drawing with Skia in C++ (#{rn_skia_dir})"
+    Pod::UI.puts "[RnLive2d] Drawing with Skia in C++ (#{rn_skia_dir}, #{rn_skia_graphite ? 'Graphite' : 'Ganesh'})"
     s.dependency "react-native-skia"
-    header_search_paths += ["cpp", "cpp/skia", "cpp/dawn/include", "cpp/api", "cpp/jsi",
-                            "cpp/rnskia", "cpp/rnskia/values", "cpp/utils"]
-      .map { |dir| "\"#{File.join(rn_skia_dir, dir)}\"" }
-    # Same as the react-native-skia pod: struct layouts must match.
-    preprocessor_definitions += ["RN_LIVE2D_SKIA=1", "SK_GRAPHITE=1",
+    skia_headers = ["cpp", "cpp/skia", "cpp/api", "cpp/jsi", "cpp/rnskia", "cpp/rnskia/values", "cpp/utils"]
+    skia_headers << "cpp/dawn/include" if rn_skia_graphite
+    header_search_paths += skia_headers.map { |dir| "\"#{File.join(rn_skia_dir, dir)}\"" }
+    # Same as the Skia pod: struct layouts must match.
+    preprocessor_definitions += ["RN_LIVE2D_SKIA=1",
                                  "SK_IMAGE_READ_PIXELS_DISABLE_LEGACY_API=1",
                                  "SK_DISABLE_LEGACY_SHAPER_FACTORY=1"]
+    preprocessor_definitions += rn_skia_graphite ? ["SK_GRAPHITE=1"] : ["SK_METAL=1", "SK_GANESH=1"]
   else
-    Pod::UI.puts "[RnLive2d] react-native-skia not found, drawing in JS"
+    Pod::UI.puts "[RnLive2d] No Skia to draw with in C++, drawing in JS"
   end
   s.pod_target_xcconfig = {
     "HEADER_SEARCH_PATHS" => header_search_paths.join(" "),

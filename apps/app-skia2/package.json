@@ -1,0 +1,42 @@
+{
+  "name": "rn-live2d-example-skia2",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-feel/deploy": "^0.3.0",
+    "@shopify/react-native-skia": "2.14.0",
+    "expo": "~57.0.27",
+    "expo-asset": "~57.0.19",
+    "expo-build-properties": "^57.0.22",
+    "expo-dev-client": "~57.0.19",
+    "expo-file-system": "~57.0.7",
+    "expo-router": "~57.0.25",
+    "expo-splash-screen": "~57.0.9",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-nitro-modules": "^0.37.1",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.10.1",
+    "rn-live2d": "workspace:*",
+    "rn-live2d-demo": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "expo-mcp": "~0.2.1",
+    "typescript": "~6.0.3"
+  }
+}

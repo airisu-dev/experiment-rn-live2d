@@ -5,7 +5,7 @@ import {
   scheduleOnRN,
   type Synchronizable,
 } from 'react-native-worklets'
-import type { SkImage, SkPicture, SkShader } from 'react-native-skia'
+import type { SkImage, SkPicture, SkShader } from './skia'
 import { now } from './clock'
 import {
   createDrawer,

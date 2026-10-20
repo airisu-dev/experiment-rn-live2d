@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useFrameCallback, useSharedValue } from 'react-native-reanimated'
-import { Group, Picture, Skia, type SkPicture } from 'react-native-skia'
+import { Group, Picture, Skia, type SkPicture } from './skia'
 import {
   createSynchronizable,
   createWorkletRuntime,

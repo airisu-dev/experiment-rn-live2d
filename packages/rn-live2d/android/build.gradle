@@ -53,6 +53,38 @@ def cubismSdkDir() {
   return dir.absolutePath.replace("\\", "/")
 }
 
+// The folder of a node package, as `from` resolves it. Null if it isn't installed.
+def resolveNodePackage(String name, File from) {
+  def process = ["node", "-p",
+    "require('path').dirname(require.resolve(process.argv[1] + '/package.json', { paths: [process.argv[2]] }))",
+    name, from.absolutePath].execute()
+  def out = process.text.trim()
+  return process.waitFor() == 0 && out ? new File(out) : null
+}
+
+// Drawing in C++ onto Skia canvases (cpp/SkiaDrawer.cpp) needs the headers,
+// defines and prebuilt libskia.a of the Skia the app uses: react-native-skia
+// (v3, Graphite) or @shopify/react-native-skia (v2, Ganesh), as app.plugin.js
+// found in the app's package.json (rnLive2d.skiaPackage). Resolved from the
+// app, since a monorepo can have both installed. No arguments: drawn in JS.
+def skiaCmakeArguments() {
+  def name = rootProject.findProperty("rnLive2d.skiaPackage")
+  if (!name) return []
+  def appDir = rootProject.projectDir.parentFile
+  def skiaDir = resolveNodePackage(name, appDir)
+  def graphite = name == "react-native-skia"
+  def libsDir = skiaDir ? resolveNodePackage(graphite ? "react-native-skia-graphite-android" : "react-native-skia-android", skiaDir) : null
+  def reactNativeDir = resolveNodePackage("react-native", appDir)
+  if (!skiaDir || !libsDir || !reactNativeDir) {
+    logger.warn("[rn-live2d] ${name} or its Android binaries not found from ${appDir}: drawing in JS.")
+    return []
+  }
+  return ["-DRN_SKIA_DIR=${skiaDir.absolutePath.replace("\\", "/")}",
+          "-DRN_SKIA_LIBS=${new File(libsDir, "libs").absolutePath.replace("\\", "/")}",
+          "-DRN_SKIA_GRAPHITE=${graphite ? "ON" : "OFF"}",
+          "-DREACT_NATIVE_DIR=${reactNativeDir.absolutePath.replace("\\", "/")}"]
+}
+
 def getExtOrDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["RnLive2d_" + name]
 }
@@ -76,7 +108,7 @@ android {
       cmake {
         cppFlags "-frtti -fexceptions -Wall -Wextra -fstack-protector-all"
         arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
-          "-DCUBISM_SDK_DIR=${cubismSdkDir()}"
+          "-DCUBISM_SDK_DIR=${cubismSdkDir()}", *skiaCmakeArguments()
         abiFilters (*reactNativeArchitectures())
 
         buildTypes {

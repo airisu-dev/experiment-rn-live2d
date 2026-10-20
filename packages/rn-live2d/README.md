@@ -22,6 +22,15 @@ npx expo install rn-live2d react-native-nitro-modules react-native-skia react-na
 
 Expo apps only (development builds with prebuild); the React Native CLI isn't supported.
 
+Skia: either version works; install one, not both.
+
+| Skia | Package | Renderer |
+| --- | --- | --- |
+| v3 | `react-native-skia` (3.3+) | Graphite (Vulkan, Metal) |
+| v2 | `@shopify/react-native-skia` (2.10+) | Ganesh (OpenGL, Metal) |
+
+For v2, install `@shopify/react-native-skia` instead of `react-native-skia` above, at 2.10 or later: `expo install` picks 2.6.2 for SDK 57, which hands Skia objects to C++ differently (JSI host objects, not native state), so pin a newer one, e.g. `npx expo install @shopify/react-native-skia@2.14.0`. The config plugin reads which one the app depends on, and models are drawn in C++ with it.
+
 ### Cubism SDK for Native
 
 The package doesn't include Live2D's Cubism SDK: its Core is proprietary, and

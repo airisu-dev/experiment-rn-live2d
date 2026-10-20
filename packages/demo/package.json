@@ -2,7 +2,7 @@
   "name": "rn-live2d-demo",
   "version": "1.0.0",
   "private": true,
-  "description": "The demo screens shared by the example apps in apps/.",
+  "description": "The demo screens shared by the example apps in apps/. Imports Skia as react-native-skia: an app on Skia v2 maps it to @shopify/react-native-skia in its Metro config.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "peerDependencies": {
@@ -13,5 +13,10 @@
     "react-native-safe-area-context": "*",
     "react-native-skia": "*",
     "rn-live2d": "*"
+  },
+  "peerDependenciesMeta": {
+    "react-native-skia": {
+      "optional": true
+    }
   }
 }
