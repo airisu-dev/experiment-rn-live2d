@@ -1,6 +1,6 @@
 # Milestone 6 — Older Cubism SDK versions
 
-**Status: base done, versions planned.** The build is ready for several versions (step 1, and `cpp/CubismCompat.hpp` with `RN_LIVE2D_CUBISM_SDK`), but only 5-r.5 is listed: `CubismCompat.hpp` fails the build on anything older. Adding 5-r.4.1 and 4-r.7 is steps 2–7.
+**Status: base done, versions planned.** The build is ready for several versions (step 1, and `cpp/CubismCompat.hpp` with `RN_LIVE2D_CUBISM_SDK`), but only 5-r.5 is listed: `CubismCompat.hpp` fails the build on anything older. Adding 5-r.4.1 and 4-r.7 is steps 2–7. Checked with 5-r.5 (2026-10-20): Android emulator (Hiyori and Mao at 60 fps; `libRnLive2d.so` 16 KB aligned on arm64 and x86_64) and iOS.
 
 Goal: build and run against **5-r.5** (current), **5-r.4.1** and **4-r.7**, the latest release of each major plus the last one before 5-r.5's API break.
 
